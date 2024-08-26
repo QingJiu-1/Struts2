@@ -272,6 +272,7 @@ ${url} <!-- /struts2-4/testUrl -->
 	<s:param name="productId" value="1001"></s:param>
 	<!-- 指定url包含的请求参数，2002不可能是一个属性名，struts2把2002直接作为属性值 -->
 	<s:param name="productId" value="2002"></s:param>
+	<s:param name="date" value="#session.date"></s:param>
 </s:url>
 ${url} <!-- /struts2-4/getProduct?productId=1001 -->
 
@@ -298,6 +299,68 @@ ${url4}
 
 <br>
 <s:url value="testUrl" var="url5" includeParams="get"></s:url>
-${url5<!-- testUrl?name=atguigu -->}
+${url5} <!-- testUrl?name=atguigu -->
+
+<br>
+s:set: 向page, request, session, application 域对象中加入一个属性值
+<s:set name="productName" value="productName" scope="request"></s:set>
+productName: ${requsetScope.productName} <!-- productName: CPU -->
+
+<s:set name="productName" value="productName" scope="page"></s:set>
+productName: ${pageScope.productName} <!-- productName: CPU -->
+
+<br>
+s:push : 把一个对象在标签开始后压入到栈中，标签结束时，弹出栈
+<%
+	Person person = new Person();
+	person.setName("QingJiu");
+	person.setAge(10);
+	request.setAttribute("person",person);
+%>
+<s:push value="#request.person">
+	${name} <!-- s:push : 把一个对象在标签开始后压入到栈中，标签结束时，弹出栈 QingJiu -->
+</s:push>
+
+<br>
+--${name}-- <!-- ---- -->
+
+<br>
+s:if,s:else,s:elseif: 可以直接使用值栈中的属性
+<br>
+<s:if test="productPrice > 1000">
+I7处理器
+</s:if>
+<s:elseif test="productPrice > 800">
+I5处理器
+</s:elseif>
+<s:else test="productPrice > 800">
+I3处理器
+</s:else>
+
+<br>
+<s:if test="#request.person.age > 10">
+	大于10岁
+</s:if>
+<s:else>
+	小于或等于10岁
+<s/else>
 ```
+
+作用域与隐含对象
+
+1. **`request` 和 `requestScope`**:
+    
+    - `request` 是一个隐含对象，它表示当前 HTTP 请求对象 (`HttpServletRequest`)。所有与请求相关的数据都可以通过这个对象访问。
+    - `requestScope` 是一个 `Map`，用于访问当前请求作用域中的属性。`requestScope` 相当于通过 `request.getAttribute()` 和 `request.setAttribute()` 来获取和设置请求属性。
+2. **`page` 和 `pageScope`**:
+    
+    - `page` 是 JSP 的一个隐含对象，表示当前的 `Servlet` 实例。通常不直接用于存储和管理数据。
+    - `pageScope` 是一个 `Map`，用于访问页面作用域中的属性。这个作用域的数据只能在当前 JSP 页面内访问。
+
+ 什么时候使用 `requestScope` 或 `pageScope`？
+
+- 当你想在 JSP 页面中直接访问某个作用域内的属性时，可以使用 `requestScope` 或 `pageScope`。
+    - 使用 `requestScope` 可以确保你访问的是请求作用域中的属性，适用于在多个 JSP 页面间传递数据的情况。
+    - 使用 `pageScope` 可以确保你访问的是当前页面作用域中的属性，适用于仅在当前页面有效的数据
+
 
