@@ -262,6 +262,7 @@ s:property: 打印值栈中的属性值的： 对于对象栈，打印值栈中�
 <s:property value="#parameters.name[0]"/>
 
 
+
 <!--url标签用来动态创建一个URL -->
 s:url: 创建一个URL 字符串的
 <s:url value="/testUrl" var="url"></s:url>
@@ -301,6 +302,9 @@ ${url4}
 <s:url value="testUrl" var="url5" includeParams="get"></s:url>
 ${url5} <!-- testUrl?name=atguigu -->
 
+
+
+
 <br>
 s:set: 向page, request, session, application 域对象中加入一个属性值
 <s:set name="productName" value="productName" scope="request"></s:set>
@@ -323,6 +327,9 @@ s:push : 把一个对象在标签开始后压入到栈中，标签结束时，�
 
 <br>
 --${name}-- <!-- ---- -->
+
+
+
 
 <br>
 s:if,s:else,s:elseif: 可以直接使用值栈中的属性
@@ -359,8 +366,71 @@ I3处理器
 
  什么时候使用 `requestScope` 或 `pageScope`？
 
-- 当你想在 JSP 页面中直接访问某个作用域内的属性时，可以使用 `requestScope` 或 `pageScope`。
+- 当你想在 JSP 页面中直接访问某个作用域内的属性时，可以使用 `requestScope` 或 `pageScope`
     - 使用 `requestScope` 可以确保你访问的是请求作用域中的属性，适用于在多个 JSP 页面间传递数据的情况。
     - 使用 `pageScope` 可以确保你访问的是当前页面作用域中的属性，适用于仅在当前页面有效的数据
 
+iterator标签：用来遍历一个数组，Collection或一个Map，并把这个可遍历对象里的每一个元素依次压入和弹出。
+```jsp
+s:iterator: 遍历集合。把这个可遍历对象里的每一个元素依次压入和弹出
+<br>
+<%
+	List<Preson> persons = new ArrayList<Preson>();
+	persons.add(new Person("AA",10));
+	persons.add(new Person("BB",20));
+	persons.add(new Person("CC",30));
+	persons.add(new Person("DD",40));
+	persons.add(new Person("EE",50));
+	
+	request.setAttribute("persons",persons);
+%>
+
+<s:iterator value="#request.persons">
+	${name} - ${age}<br> //注意与s:push一样只在标签内部有用，结束后弹出
+</s:iterator>
+
+
+<!-- 在值栈的对象里面有个persons属性 -->
+<s:iterator value="persons">
+	${name} - ${age} <br>
+</s:iterator>
+
+<s:iterator value="#request.persons" status="status">
+	index: ${status.index}-count: ${status.count}: ${name} - ${age}<br>
+	<!-- index:0-count 1: AA-10 排序下去 -->
+</s:iterator>
+
+```
+
+sort标签：用来对一个可遍历对象里的元素进行排序
+```jsp
+s:sort 可以对集合中的元素进行排序
+<br>
+<%
+	PersonComparator pc = new PersonComparator();
+	request.setAttribute("comparator",pc);
+%>
+
+<s:sort comparator="#request.comparator" source="persons" var="persons2">
+</s:sort>
+<s:iterator value="#attr.persons2">
+	${name} - ${age} <br>
+</s:iterator>
+```
+
+date标签：date标签用来对Date对象进行排版
+```jsp
+s:date 可以对Date进行排版
+<br>
+<s:date name="#session.date" format="yyyy-MM-dd hh:mm:ss" var="date2" />
+date:${date2}
+```
+
+a标签：呈现为一个HTML连接。这个标签可以接受HTML语言中的a元素所能接受的所有属性
+```jsp
+<S:iteartor value="persons">
+	<!-- 可以使用%{}把属性包装起来，使其进行强制的OGNL解析-->
+	<s:a href="getPerson.action?name=%{name}">${name}</s:a>
+</s:iteartor>
+```
 
