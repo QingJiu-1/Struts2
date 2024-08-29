@@ -1001,3 +1001,577 @@ public class Employee implements RequestAware{
 ```
 
 ## 主题
+`默认情况下，form标签将呈现为一个HTML form元素和一个table元素`
+`修改主题：`
+- `通过UI标签的theme属性`
+- `在一个表单里，若没有给出某个UI标签的theme属性，它将使用这个表单的主题`
+- `page,request,session或appliction中添加一个theme属性
+- `修改struts.properties文件中的struts.ui.theme属性
+
+## CRUD操作
+`在web.xml配置struts2`
+```xml
+<filter>
+    <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    <!-- Optional init parameters can be configured here -->
+</filter>
+
+<filter-mapping>
+    <filter-name>struts2</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+
+```
+`struts2的配置文件`
+```xml
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        
+    </package>
+</struts>
+
+```
+
+`新建index.jsp`
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <a href="emp-list">List All Employees</a>
+    
+</body>
+</html>
+
+```
+
+```jsp
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="emp-*" 
+	        class="com.QingJiu.struts2.app.EmployeeAction"
+	        method="{1}">
+		    <result name="{1}">/emp-{1}.jsp</result>
+	    </action>
+    </package>
+</struts>
+```
+
+```Java
+public class EmployeeAction{
+	public String list(){
+		return "list";
+	}
+}
+```
+
+```Java
+public class Employee {
+    private Integer employeeId;
+    private String firstName;
+    private String lastName;
+    private String email;
+
+    // No-argument constructor
+    public Employee() {
+    }
+
+    // Parameterized constructor
+    public Employee(Integer employeeId, String firstName, String lastName, String email) {
+	    super();
+        this.employeeId = employeeId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+    }
+
+    // Getter and Setter for employeeId
+    public Integer getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(Integer employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    // Getter and Setter for firstName
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    // Getter and Setter for lastName
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    // Getter and Setter for email
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    // toString method
+    @Override
+    public String toString() {
+        return "Employee{" +
+                "employeeId=" + employeeId +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                '}';
+    }
+}
+
+
+```
+
+```Java
+public class Dao{
+
+	private static Map<Integer,Employee> emps = new LinkedHashMap<Integer,Employee>();
+	
+	static{
+		emps.put(1001,new Employee(1001,"AA","aa","aa@qq.com"));
+		emps.put(1002,new Employee(1002,"BB","bb","bb@qq.com"));
+		emps.put(1003,new Employee(1003,"CC","cc","cc@qq.com"));
+		emps.put(1004,new Employee(1004,"DD","dd","dd@qq.com"));
+		emps.put(1005,new Employee(1005,"EE","ee","ee@qq.com"));
+	}
+	
+	public List<Employee> getEmployees(){
+		return new ArrayList<>(emp.values());
+	}
+	
+	public void delete(Integer empId){
+		emps.remove(empId);
+	}
+	
+	public void savr(Employee emp){
+		long time = System.currentTimeMillis();
+		emp.setEmployeeId((int)time);
+		emps.put(emp.getEmployeeId(),emp)
+	}
+	
+	public Employee get(Integer empId){
+		return emps.get(empId);
+	}
+	
+	public void update(Employee emp){
+		emps.put(emp.getEmployeeId(),emp);
+	}
+
+}
+```
+
+`为EmployeeAction添加`
+```Java
+public class EmployeeAction implements RequsetAware{
+	private Dao dao = new Dao();
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	private Map<String,Object> request;
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+}
+```
+
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Employee List</title>
+</head>
+<body>
+    <!-- Employee list content goes here -->
+    <table cellpadding="10" cellspacing="0" border="1">
+	    <thead>
+		    <tr>
+			    <td>ID</td>
+			    <td>FirstName</td>
+			    <td>ListName</td>
+			    <td>Email</td>
+			    <td>Edit</td>
+			    <td>Delete</td>
+		    </tr>
+	    </thead>
+	    <tbody>
+		    <s:iterator value="#request.emps">
+			    <tr>
+				    <td>${employeeId}</td>
+				    <td>${firstName}</td>
+				    <td>${lastName}</td>
+				    <td>${email}</td>
+				    <td><a href="">Edit</a></td>
+				    <td><a href="emp-delete?employeeId=${employeeId}">Delete</a></td>
+			    </tr>
+		    </s:iterator>
+	    <tbody>
+    </table>
+</body>
+</html>
+
+```
+
+`完善方法`
+```java
+public class EmployeeAction implements RequsetAware{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	//需要在当前的EmployeeAction中定义 employeeId属性
+	//以接收请求参数
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String delete(){
+		dao.delete(employeeId);
+		//返回结果的类型应为：redirectAction
+		//也可以时chain:实际上chain时没有必要的。因为不需在下一个Action中保留当前Action的状态；还有，若使用chain，则到达目标页面后，地址栏显示的依然时删除的那个链接，刷新时会有重复提交。
+		return "delete";
+	}
+	
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+}
+```
+`为删除添加精确匹配`
+```jsp
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="emp-*" 
+	        class="com.QingJiu.struts2.app.EmployeeAction"
+	        method="{1}">
+		    <result name="{1}">/emp-{1}.jsp</result>
+		    <result name="delete" type="redirectAction">emp-list</result>
+	    </action>
+    </package>
+</struts>
+```
+
+`Params拦截器
+`Parameters拦截器将把表单字段映射到ValueStack栈的栈顶对象的各个属性中。如果，某个字段在模型里面没有匹配的属性，Param拦截器将尝试ValueStack栈中的下一个对象。
+
+`添加操作
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Employee List</title>
+</head>
+<body>
+
+	<s:form action="emp-save">
+		
+		<s:textfield name="firstName" label="FirstName"></s:textfield>
+		<s:textfield name="lastName" label="ListName"></s:textfield>
+		<s:textfield name="email" label="Email"></s:textfield>
+		
+		<s:submit></s:submit>
+	</s:form>
+
+	<br>
+	<hr>
+	<br>
+    <!-- Employee list content goes here -->
+    <table cellpadding="10" cellspacing="0" border="1">
+	    <thead>
+		    <tr>
+			    <td>ID</td>
+			    <td>FirstName</td>
+			    <td>ListName</td>
+			    <td>Email</td>
+			    <td>Edit</td>
+			    <td>Delete</td>
+		    </tr>
+	    </thead>
+	    <tbody>
+		    <s:iterator value="#request.emps">
+			    <tr>
+				    <td>${employeeId}</td>
+				    <td>${firstName}</td>
+				    <td>${lastName}</td>
+				    <td>${email}</td>
+				    <td><a href="">Edit</a></td>
+				    <td><a href="emp-delete?employeeId=${employeeId}">Delete</a></td>
+			    </tr>
+		    </s:iterator>
+	    <tbody>
+    </table>
+</body>
+</html>
+```
+
+```Java
+public class EmployeeAction implements RequsetAware{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	//需要在当前的EmployeeAction中定义 employeeId属性
+	//以接收请求参数
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String save(){
+		//1、获取请求参数：通过定义对应属性的方式
+		//2、调用Dao的save方法
+		Employee employee = new Employee(null,firstName,listName,email);
+		dao.save(employee);
+		//3、通过redirectAction的方式响应结果给emp-list
+		//return "save";
+		return "success";
+	}
+	
+	public String delete(){
+		dao.delete(employeeId);
+		//返回结果的类型应为：redirectAction
+		//也可以时chain:实际上chain时没有必要的。因为不需在下一个Action中保留当前Action的状态；还有，若使用chain，则到达目标页面后，地址栏显示的依然时删除的那个链接，刷新时会有重复提交。
+		//return "delete";
+		return "success";
+	}
+	
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+}
+```
+
+```xml
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="emp-*" 
+	        class="com.QingJiu.struts2.app.EmployeeAction"
+	        method="{1}">
+		    <result name="{1}">/emp-{1}.jsp</result>
+		    <!--因为多次使用所以改为success-->
+		    <result name="success" type="redirectAction">emp-list</result>
+	    </action>
+    </package>
+</struts>
+```
+
+`代码成功实现但太过重复，对其简化`
+```java
+public class EmployeeAction implements RequsetAware{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	private Employee employee;
+	
+	//需要在当前的EmployeeAction中定义 employeeId属性
+	//以接收请求参数
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String save(){
+		//1、获取请求参数：通过定义对应属性的方式
+		//2、调用Dao的save方法
+		dao.save(employee);
+		//3、通过redirectAction的方式响应结果给emp-list
+		//return "save";
+		return "success";
+	}
+	
+	public String delete(){
+		dao.delete(employee.getEmployeeId());
+		//返回结果的类型应为：redirectAction
+		//也可以时chain:实际上chain时没有必要的。因为不需在下一个Action中保留当前Action的状态；还有，若使用chain，则到达目标页面后，地址栏显示的依然时删除的那个链接，刷新时会有重复提交。
+		//return "delete";
+		return "success";
+	}
+	
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+}
+```
+
+`要实现功能则需要，把 Action 和 Model隔开：`
+`  在使用Struts作为前端的企业级应用程序时把Action和Model清晰地隔离开是有必要的：有些Action类不代表任何Model对象，它们的功能仅限于提供显示服务。`
+
+`如果Action类实现了ModelDriven接口，该拦截器将把ModelDriven接口的getModel()方法返回的对象治愈栈顶`
+
+`于是对其改进`
+```java
+public class EmployeeAction implements RequsetAware , ModelDriven<Employee>{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	private Employee employee;
+	
+	//需要在当前的EmployeeAction中定义 employeeId属性
+	//以接收请求参数
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String save(){
+		//1、获取请求参数：通过定义对应属性的方式
+		//2、调用Dao的save方法
+		dao.save(employee);
+		//3、通过redirectAction的方式响应结果给emp-list
+		//return "save";
+		return "success";
+	}
+	
+	public String delete(){
+		dao.delete(employee.getEmployeeId());
+		//返回结果的类型应为：redirectAction
+		//也可以时chain:实际上chain时没有必要的。因为不需在下一个Action中保留当前Action的状态；还有，若使用chain，则到达目标页面后，地址栏显示的依然时删除的那个链接，刷新时会有重复提交。
+		//return "delete";
+		return "success";
+	}
+	
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+	
+	@Override 
+	public Employee getModel() { 
+		employee = new Employee();
+		return employee;
+	}
+}
+```
+
+`Action 实现ModelDriven接口后的运行流程
+1、先会执行ModelDrivenInterceptor的intercept方法。
+```java
+package org.apache.struts2.interceptor;
+
+import com.opensymphony.xwork2.ActionInvocation;
+import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
+import com.opensymphony.xwork2.ModelDriven;
+import com.opensymphony.xwork2.util.ValueStack;
+
+public class ModelDrivenInterceptor extends AbstractInterceptor {
+
+    @Override
+    public String intercept(ActionInvocation invocation) throws Exception {
+        // 获取Action对象：例如 EmployeeAction 对象，此时 EmployeeAction 已经实现了 ModelDriven 接口 
+        // public class EmployeeAction implements RequestAware, ModelDriven<Employee>
+        Object action = invocation.getAction();
+
+        // 判断 action 是否实现了 ModelDriven 接口
+        if (action instanceof ModelDriven) {
+            // 强制转换为 ModelDriven 类型
+            ModelDriven<?> modelDriven = (ModelDriven<?>) action;
+
+			// 获取当前的值栈
+	        ValueStack stack = invocation.getStack();
+            
+            //调用ModelDriven 接口的getModel()方法
+            //即调用EmployeeAction的getModel()方法
+            /**
+	        @Override 
+			public Employee getModel() { 
+				employee = new Employee();
+				return employee;
+			}    
+            */
+            Object model = modelDriven.getModel();
+
+            // 检查模型对象是否为空，避免空指针异常
+            if (model != null) {
+                // 将模型对象推入值栈的顶部，实际压入的是EmployeeAction的employee成员变量
+                stack.push(model);
+            } else {
+                // 如果模型对象为 null，记录警告或处理异常（根据需要）
+                System.out.println("ModelDrivenInterceptor: model is null!");
+            }
+        }
+
+        // 调用下一个拦截器或目标 Action
+        return invocation.invoke();
+    }
+}
+
+
+```
+
+2、`执行ParametersInterceptor的intercept方法：把请求参数的值赋给栈顶对象对应的属性。若栈顶对象没有对应的属性，则查询值栈中下一个对象对应的属性....
+
+3、`注意：getModel方法不能提供以下实现.的确会返回一个Employee对象到值栈的栈顶。但当前Action的employee成员变量是null。
+```java
+@Override 
+public Employee getModel() { 
+	return new Employee();
+}
+```

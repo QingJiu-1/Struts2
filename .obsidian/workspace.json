@@ -86,8 +86,8 @@
               "type": "backlink",
               "state": {
                 "file": "struts2.md",
-                "collapseAll": false,
-                "extraContext": false,
+                "collapseAll": true,
+                "extraContext": true,
                 "sortOrder": "alphabetical",
                 "showSearch": false,
                 "searchQuery": "",
@@ -129,7 +129,8 @@
               }
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -146,6 +147,6 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "5c365a2463a7ceeb",
+  "active": "478321f4a28222cc",
   "lastOpenFiles": []
 }
