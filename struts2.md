@@ -1338,7 +1338,7 @@ public class EmployeeAction implements RequsetAware{
 				    <td>${firstName}</td>
 				    <td>${lastName}</td>
 				    <td>${email}</td>
-				    <td><a href="">Edit</a></td>
+				    <td><a href="emp-edit?employeeId=${employeeId}">Edit</a></td>
 				    <td><a href="emp-delete?employeeId=${employeeId}">Delete</a></td>
 			    </tr>
 		    </s:iterator>
@@ -1574,4 +1574,491 @@ public class ModelDrivenInterceptor extends AbstractInterceptor {
 public Employee getModel() { 
 	return new Employee();
 }
+```
+
+`更改内容：`
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>emp-edit</title>
+</head>
+<body>
+    <s:form action="emp-update">
+		<s:hidden name="employeeId" label=""></s:hidden>
+		<s:textfield name="firstName" label="FirstName"></s:textfield>
+		<s:textfield name="lastName" label="ListName"></s:textfield>
+		<s:textfield name="email" label="Email"></s:textfield>
+		
+		<s:submit></s:submit>
+	</s:form>
+</body>
+</html>
+```
+`
+`编写edit的方法：在EmployeeAction中添加`
+```Java
+public String edit(){
+	//1、获取传入的employeeId:employee.getEmployeeId;
+	//2、根据employeeId获取Employee对象
+	Employee emp = dao.get(employee.getEmployeeId());
+	//3、把栈顶对象属性装配好：此时栈顶对象是employee
+	//目前的employee对象才new出来，因此目前只有employeeId属性，其他属性为null
+	/**
+	*struts2表单回显时：从值栈栈顶开始查找匹配的属性，若找到就添加到value属性中。
+	*/
+	employee.setEmail(emp.getEmail());
+	employee.setFirstName(emp.getFirstName());
+	employee.setLastName(emp.getLastName());
+	
+	
+	return "edit";
+	
+}
+```
+
+![[Pasted image 20240831100513.png]]
+
+`错误演示：`
+```Java
+public String edit(){
+	//不能够进行表单的回显，因为经过重写赋值的employee对象已经不再是栈顶对象了。
+	employee = dao.get(emplotee.getEmployeeId());
+	
+	return "edit";
+	
+}
+```
+`原理解析图`
+![[Pasted image 20240831104103.png]]
+`方法的改进`
+```Java
+public String edit(){
+//手动的把从数据库中获取的Employee对象放到值栈的栈顶
+//但此时值栈栈顶及第二个对象均为Employee对象，不够完美
+//ActionContext.getContext().getValueStack().push(dao.get(emplotee.getEmployeeId()));
+
+	return "edit";
+}
+```
+`给EmployeeAction类中的getModle（）放添加判断`
+```Java
+//为其方便添加一个setEmployeeId方法
+public void setEmployeeId(Integer employeeId){
+
+	this.employeeId = employeeId;
+
+}
+
+@Override 
+	public Employee getModel() { 
+		//判断Create 还是Edit
+		//若为Create,则employee = new Employee();
+		//若为Edit,则employee = dao.get(employeeId);
+		//可以通过判定employeeId是否为空，来决定哪个为Create哪个是Edit;若通过employeeId来判断，则需要在modelDriven拦截器之前先执行一个params拦截器
+		//而这可以通过使用paramsParams拦截器栈实现
+		//需要在struts.xml文件中配置使用paramsPrepareParams作为默认的拦截器栈。
+		//添加是：没有employeeId这个请求参数
+		if(employeeId == null || employeeId.equals("")){
+			employee = new Employee();
+		}else{ //回显页面时：有employeeId这个请求参数
+			employee = dao.get(emplotee.getEmployeeId());
+		}
+		return employee;
+	}
+```
+`在struts的配置文件中添加新的配置：`
+```xml
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+	    <!--配置使用paramsPrepareParams作为默认的拦截器栈-->
+	    <default-interceptor-ref name="paramsPrepareParams"></default-interceptor-ref>
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="emp-*" 
+	        class="com.QingJiu.struts2.app.EmployeeAction"
+	        method="{1}">
+		    <result name="{1}">/emp-{1}.jsp</result>
+		    <!--因为多次使用所以改为success-->
+		    <result name="success" type="redirectAction">emp-list</result>
+	    </action>
+    </package>
+</struts>
+```
+`EmployeeAction类中添加update方法`
+```Java
+public String update(){
+
+	return "success";
+}
+```
+
+`目前EmployeeAction类中的方法如下：`
+```Java
+public class EmployeeAction implements RequsetAware , ModelDriven<Employee>{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	private Employee employee;
+
+	//为其方便添加一个setEmployeeId方法
+	public void setEmployeeId(Integer employeeId){
+	
+		this.employeeId = employeeId;
+	
+	}
+	
+	//需要在当前的EmployeeAction中定义 employeeId属性
+	//以接收请求参数
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String save(){
+		System.out.println("employee：" + employee.hashCode());
+		System.out.println("值栈栈顶对象：" + ActionContext.getContext().getValueStack().peek().hashCode());
+		//1、获取请求参数：通过定义对应属性的方式
+		//2、调用Dao的save方法
+		dao.save(employee);
+		//3、通过redirectAction的方式响应结果给emp-list
+		//return "save";
+		return "success";
+	}
+	
+	public String delete(){
+		dao.delete(employeeId);
+		//返回结果的类型应为：redirectAction
+		//也可以时chain:实际上chain时没有必要的。因为不需在下一个Action中保留当前Action的状态；还有，若使用chain，则到达目标页面后，地址栏显示的依然时删除的那个链接，刷新时会有重复提交。
+		//return "delete";
+		return "success";
+	}
+
+	public String edit(){
+		return "edit";
+	}
+
+	public String update(){
+		dao.update(employee);
+		return "success";
+	}
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+	
+	@Override 
+	public Employee getModel() { 
+		//判断Create 还是Edit
+		//若为Create,则employee = new Employee();
+		//若为Edit,则employee = dao.get(employeeId);
+		//可以通过判定employeeId是否为空，来决定哪个为Create哪个是Edit;若通过employeeId来判断，则需要在modelDriven拦截器之前先执行一个params拦截器
+		//而这可以通过使用paramsParams拦截器栈实现
+		//需要在struts.xml文件中配置使用paramsPrepareParams作为默认的拦截器栈。
+		//添加是：没有employeeId这个请求参数
+		if(employeeId == null || employeeId.equals("")){
+			employee = new Employee();
+		}else{ //回显页面时：有employeeId这个请求参数
+			employee = dao.get(emplotee.getEmployeeId());
+		}
+		return employee;
+	}
+}
+```
+![[Pasted image 20240831114633.png]]
+
+### `小结`
+`使用paramsPrepareParams拦截器栈后的运行流程`
+	`1).paramsPrepareParams 和 defaultStack 一样都是拦截器栈，而struts-default 包默认使用的是后者`
+	`2).可以在struts配置文件中通过以下方式修改使用的默认的拦截器栈：
+	` <default-interceptor-ref name="paramsPrepareParams"></default-interceptor-ref>
+	`3).paramsPrepareParams 拦截器在于：
+	`params -> modelDriven -> params
+	`所以可以先把请求参数赋给Action 对应的属性，再根据赋给Action 的那个属性值决定压到值栈栈顶的对象，最后再为栈顶对象的属性赋值`
+	`对edit操作而言：`
+		`1.先为EmployeeAction的employeeId赋值`
+		`2.根据employeeId从数据库中加载对应的对象，并放入值栈的栈顶`
+		`3.再为栈顶对象的employeeId 赋值(实际上此时employeeId 属性值已经存在)`
+		`4.把栈顶对象属性回显在表单中。`
+	`4).关于回显：Struts2 表单标签会从值栈中获取对应的属性值进行回显。`
+	`5).存在的问题：`
+		`getModel方法：`
+```Java
+@Override 
+	public Employee getModel() { 
+		if(employeeId == null || employeeId.equals("")){
+			employee = new Employee();
+		}else{ //回显页面时：有employeeId这个请求参数
+			employee = dao.get(emplotee.getEmployeeId());
+		}
+		return employee;
+	}
+```
+		`1、在执行删除的时候，getModel 不为null或空字符串，但 getModel 方法却从数据库加载了一个对象，本不该加载`
+		`2、执行查询全部信息时，也 new 了个 Employee()对象。浪费`
+	`6)、解决方案：使用PrepareInterceptor 和 Preparable 接口`
+```Java
+public class EmployeeAction implements RequsetAware , ModelDriven<Employee>,Preparable{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	private Employee employee;
+
+
+	public void setEmployeeId(Integer employeeId){
+	
+		this.employeeId = employeeId;
+	
+	}
+	
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String save(){
+		System.out.println("employee：" + employee.hashCode());
+		System.out.println("值栈栈顶对象：" + ActionContext.getContext().getValueStack().peek().hashCode());
+		dao.save(employee);
+		return "success";
+	}
+	
+	public String delete(){
+		dao.delete(employeeId);
+		return "success";
+	}
+
+	public String edit(){
+		return "edit";
+	}
+
+	public String update(){
+		dao.update(employee);
+		return "success";
+	}
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+	
+	@Override 
+	public Employee getModel() { 
+		if(employeeId == null || employeeId.equals("")){
+			employee = new Employee();
+		}else{ //回显页面时：有employeeId这个请求参数
+			employee = dao.get(emplotee.getEmployeeId());
+		}
+		return employee;
+	}
+
+	/**
+	*Preparable 方法的主要作用：为 getModel() 方法准备model的
+	*/
+	@Override 
+	public void prepare() throws Exception { 
+		if (employeeId != null) {
+		 
+			employee = dao.get(employeeId); // 根据 employeeId 从数据库获取 Employee 对象 
+		} else { 
+			employee = dao.get(emplotee.getEmployeeId());
+		} 
+	}
+}
+```
+	`7).关于PrepareInterceptor`
+```Java
+public String doIntercept(ActionInvocation invocation) throws Exception {
+    // 判断 Action 实例
+    Object action = invocation.getAction();
+
+    // 判断 Action 是否实现了 Preparable 接口
+    if (action instanceof Preparable) {
+        
+        try {
+            // 在 try 块中声明 prefixes 数组
+            String[] prefixes;
+
+            // 根据当前拦截器的 firstCallPrepareDo(默认false) 属性确定  prefixes
+            if (firstCallPrepareDo) {
+              prefixes = new String[] {ALT_PREPAPRE_PREFIX,PREPARE_PREFIX};
+            } else {
+                // 如果没有自定义的 prepare 方法，则调用默认的 prepare 方法
+               prefixes= new String[] {PREPARE_PREFIX,ALT_PREPAPRE_PREFIX};
+            }
+            //若false,则prefixes：prepare prepareDo
+            //调用前缀方法
+            prefixMethodInvocationUtil.invokePrepareMethod(invocation,prefixes);
+        } catch (InvocationTargetException e) {
+            // 捕获并处理异常
+            Throwable cause = e.getCause()；
+            if(cause instanceof Exception){
+	            throw (Exception) cause;
+            }else if(cause instanceof Error){
+	            throw (Error) cause;
+            }else{
+	            throw e;
+            }
+        }
+		
+        //根据当前拦截器的alwaysInvokePrepare(默认时true)决定是否调用Action 的 prepare 方法
+        if(alwaysInvokePrepare){
+	        ((Preparable) action).prepare();
+        }
+    }
+
+    // 继续执行下一个拦截器或目标 Action
+    return invocation.invoke();
+}
+
+```
+```Java
+public static void invokePrepareMethod(Object action, String[] prefixes) throws Exception{
+	
+	//获取Action实例
+	Object action = invocation.getAction();
+	//获取要调用的Action方法的名字(update)
+	String methodName = actionInvocation.getProxy().getMethod();
+	
+	if(methodName == null){
+		methodName = DEFAULT_INVOCATION_METHODNAME;
+	}
+	
+	//获取前缀方法
+	MethodName = getPrefixedMethod(prefixex,methodName,action);
+	
+	//若方法不为null，则通过反射调用前缀方法
+	if(method != null){
+		method.invoke(action,new Object[0]);
+	}
+
+}
+```
+	`1、若Action实现了Prepareble接口，则Struts 将会尝试执行prepare[ActionMethodName]方法，若prepare[ActionMethodName]不存在，则尝试执行prepareDo[ActionMethodName]方法，若都不存在，就都不执行。`
+	`2、若PrepareInterceptor 的alwaysInvokePrepare属性为 false，则Struts2 将不会调用实现了Preparable 接口的Action 的 prepare()方法`
+	可以为每一个ActionMethod 准备 prepare[ActionMethdName] 方法，而抛弃掉原来的prepare()方法，将PrepareInterceptor 的alwaysInvokePrepare属性置为 false，以避免Struts2框架再调用prepare()方法。
+	`最后的改进：`
+```Java
+public class EmployeeAction implements RequsetAware , ModelDriven<Employee>,Preparable{
+	private Dao dao = new Dao();
+	
+	private Integer employeeId;
+	
+	private Employee employee;
+
+
+	public void setEmployeeId(Integer employeeId){
+	
+		this.employeeId = employeeId;
+	
+	}
+	
+	public void setEmployeeId(Integer employeeId) { 
+		this.employeeId = employeeId; 
+	}
+	
+	public String save(){
+		dao.save(employee);
+		return "success";
+	}
+	
+	//私人定制
+	public void prepareSave(){
+		employee = new Employee();
+	}
+	
+	public String delete(){
+		dao.delete(employeeId);
+		return "success";
+	}
+
+	public String edit(){
+		return "edit";
+	}
+
+	public void prepareEdit(){
+		employee = dao.get(employeeId);
+	}
+
+	public String update(){
+		dao.update(employee);
+		return "success";
+	}
+
+	public String prepareUpdate(){
+		employee = new Employee();
+	}
+
+	public String list(){
+		request.put("emps",dao.getEmployees());
+		return "list";
+	}
+	
+	private Map<String,Object> request;
+	
+	@Override 
+	public void setRequest(Map<String, Object> arg0) { 
+		this.request = arg0; 
+	}
+	
+	@Override 
+	public Employee getModel() { 
+		if(employeeId == null || employeeId.equals("")){
+			employee = new Employee();
+		}else{ //回显页面时：有employeeId这个请求参数
+			employee = dao.get(emplotee.getEmployeeId());
+		}
+		return employee;
+	}
+
+	/**
+	*Preparable 方法的主要作用：为 getModel() 方法准备model的
+	*/
+	@Override 
+	public void prepare() throws Exception { 
+		System.out.println("prepare...")
+	}
+}
+```
+	`为其添加配置：`
+```xml
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+		<!--修改PrepareInterceptor 拦截器的alwaysInvokePrepare 属性值为false -->
+		<interceptors>
+			<interceptor-stack name="QingJiu">
+				<interceptors-ref name="paramsPrepareParams">
+					<param name="prepare.alwaysInvokePrepare">false</param>
+				</interceptors-ref>
+			</interceptor-stack>
+		</interceptors>
+	    <!--配置使用paramsPrepareParams作为默认的拦截器栈-->
+	    <default-interceptor-ref name="QingJiu"></default-interceptor-ref>
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="emp-*" 
+	        class="com.QingJiu.struts2.app.EmployeeAction"
+	        method="{1}">
+		    <result name="{1}">/emp-{1}.jsp</result>
+		    <!--因为多次使用所以改为success-->
+		    <result name="success" type="redirectAction">emp-list</result>
+	    </action>
+    </package>
+</struts>
 ```

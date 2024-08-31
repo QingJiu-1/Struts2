@@ -69,7 +69,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "f803d9c7c6cbbfa0",
@@ -147,6 +148,12 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "478321f4a28222cc",
-  "lastOpenFiles": []
+  "active": "5c365a2463a7ceeb",
+  "lastOpenFiles": [
+    "Pasted image 20240831114633.png",
+    "Pasted image 20240831104103.png",
+    "Pasted image 20240831100513.png",
+    "Pasted image 20240831100451.png",
+    "struts2.md"
+  ]
 }
