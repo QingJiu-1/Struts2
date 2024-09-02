@@ -2062,3 +2062,140 @@ public class EmployeeAction implements RequsetAware , ModelDriven<Employee>,Prep
     </package>
 </struts>
 ```
+
+
+## 类型转换
+
+`概述：`
+- `从一个HTML表单到一个Action对象，类型转换是从字符串到非字符串。
+	- `HTTP没有“类型”的概念。每一项表单输入只可能是一个字符串或一个字符串数字。在服务器端，必须把String转为特定的数据类型。`
+ - `在struts2中，把请求参数映射到action属性的工作由Parameters拦截器负责，它是默认的defaultStack拦截器中的一员。Parameters拦截器可以自动完成字符串和基本数据类型之间的转换。`
+
+`类型转换错误：`
+- `若Action类没有实现ValidationAware接口：Struts在遇到类型转换错误时仍会继续调用其Action方法，就好像什么都没发生一样
+- `若Action类实现ValidationAware接口:Struts在遇到类型转换错误时将不会继续调用其Action方法：Struts将检查相关action元素的声明是否包含着一个name=input的result。如果有，Struts将会把控制权转交给那个result元素：若没有input结果，Struts将把控制权转交给那个result元素；若没有input结果，Struts将抛出一个异常
+
+`实现`
+`web.xml`
+```xml
+<filter>
+    <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    <!-- Optional init parameters can be configured here -->
+</filter>
+
+<filter-mapping>
+    <filter-name>struts2</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+
+`struts2配置文件`
+```xml
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="testConversion" class="com.QingJiu.struts2.ConversionAction"
+	        <result>/success.jsp</result>
+        </action>
+    </package>
+</struts>
+
+```
+
+`index.jsp`
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testConversion">
+	    <s:testfield name="age" label="Age"></s:testfield>
+	    <s:submit></s:submit>
+    </s:form>
+</body>
+</html>
+
+
+```
+
+`ConversionAction.java`
+```java
+public class ConversionAction {
+    // 私有字段 age
+    private int age;
+
+    // 获取 age 的方法
+    public int getAge() {
+        return age;
+    }
+
+    // 设置 age 的方法
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+	public String execute(){
+
+		System.out.println("age：" + age);
+		return "success";
+
+	}
+}
+
+```
+
+`sucess.jsp`
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>success Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <h4>Success</h4>
+</body>
+</html>
+```
+
+`为了使其出错使可以抛出异常，需要继承ActionSupport`
+```java
+public class ConversionAction extends ActionSupport {
+
+	private static final long serialVersionUID = 1L;
+
+    // 私有字段 age
+    private int age;
+
+    // 获取 age 的方法
+    public int getAge() {
+        return age;
+    }
+
+    // 设置 age 的方法
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+	public String execute(){
+
+		System.out.println("age：" + age);
+		return "success";
+
+	}
+}
+```

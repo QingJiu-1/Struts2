@@ -18,6 +18,18 @@
                 "source": false
               }
             }
+          },
+          {
+            "id": "12364f1fd549a129",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "jsp空格式.md",
+                "mode": "source",
+                "source": false
+              }
+            }
           }
         ]
       }
@@ -69,8 +81,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "f803d9c7c6cbbfa0",
@@ -150,10 +161,11 @@
   },
   "active": "5c365a2463a7ceeb",
   "lastOpenFiles": [
+    "jsp空格式.md",
+    "struts2.md",
     "Pasted image 20240831114633.png",
     "Pasted image 20240831104103.png",
     "Pasted image 20240831100513.png",
-    "Pasted image 20240831100451.png",
-    "struts2.md"
+    "Pasted image 20240831100451.png"
   ]
 }
