@@ -2099,8 +2099,9 @@ public class EmployeeAction implements RequsetAware , ModelDriven<Employee>,Prep
     <!-- 包配置 -->
     <package name="default" namespace="/" extends="struts-default">
         <!-- 这里可以定义 actions, interceptors 等 -->
-        <action name="testConversion" class="com.QingJiu.struts2.ConversionAction"
-	        <result>/success.jsp</result>
+        <action name="testConversion" class="com.QingJiu.struts2.ConversionAction">
+	        <result> /success.jsp </result>
+	        <result name="input"> /index.jsp </result>
         </action>
     </package>
 </struts>
@@ -2119,6 +2120,25 @@ public class EmployeeAction implements RequsetAware , ModelDriven<Employee>,Prep
 </head>
 <body>
     <!-- 页面内容 -->
+    <!--
+	问题一：如何覆盖默认的错误消息？
+		对应的Action类所在的包中新建
+		ActionClassName.properties 文件，ClassName即为包含着输入字段的Action类的类名
+		在属性文件中添加如下键值对：
+		invalid.fieldvalue.fieldName=XXX
+	问题二：如果是simple主题，还会自动显示错误消息吗？如果不会显示，怎么办？
+		通过debug标签，可知若转换出错，则在值栈的Action（实现了ValidationAware接口）对象中有一个fieldErrors属性。该属性的类型为Map<String,List<String>> 键：字段（属性名），值：错误消息组成的List。所以可以使用LE或OGNL的方式来显示错误消息${fieldErros.age[0]}
+		还可以通过使用s:fielderror标签来显示。可以通过fieldName属性显示指定字段的错误
+    -->
+
+	 <s:form action="testConversion" theme="simple">
+	     Age:<s:testfield name="age" label="Age"></s:testfield>
+	     ${fieldErros.age[0]}
+	     <s:fielderror fieldName="age"></s:fielderror>
+	     <br>
+	    <s:submit></s:submit>
+    </s:form>
+
     <s:form action="testConversion">
 	    <s:testfield name="age" label="Age"></s:testfield>
 	    <s:submit></s:submit>
@@ -2198,4 +2218,19 @@ public class ConversionAction extends ActionSupport {
 
 	}
 }
+```
+
+`类型转换错误消息的定制`
+- `作为默认的default拦截器的一员，ConversionError拦截器负责添加与类型转换有关的错误消息（前提:Action类必须实现了ValidationAware接口）和保存个请求参数的原始值。`
+- `若字段标签使用的不是simple主题，则非法输入字段将导致一条有以下格式的出错消息：Invalid field value for field fieldName.`
+- `覆盖默认的出错消息
+	- `在对应的Action类所在的包中新建ActionClassName.properties 文件，ClassName即为包含着输入字段的Action类的类名`
+	- `在属性文件中添加如下键值对：invalid.fieldvalue.fieldName=Custom error message`
+- `定制出错消息的样式：
+	- `每一条出错消息都被打包在一个HTML span元素里，可以通过覆盖其行标为errorMessage的那个css样式来改变出错消息的格式。`
+- `显示错误消息：如果是simple主题，可以通过<s:fielderror name="filedname"></s:fielderror>标签显示错误消息`
+
+`ConversionAction.properties`
+```properties
+invalid.fieldvalue.age=\u9519\u8bef\u7684\u5e74\u9f84\u683c\u5f0f.
 ```
