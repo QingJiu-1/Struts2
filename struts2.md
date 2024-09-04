@@ -2129,6 +2129,9 @@ public class EmployeeAction implements RequsetAware , ModelDriven<Employee>,Prep
 	问题二：如果是simple主题，还会自动显示错误消息吗？如果不会显示，怎么办？
 		通过debug标签，可知若转换出错，则在值栈的Action（实现了ValidationAware接口）对象中有一个fieldErrors属性。该属性的类型为Map<String,List<String>> 键：字段（属性名），值：错误消息组成的List。所以可以使用LE或OGNL的方式来显示错误消息${fieldErros.age[0]}
 		还可以通过使用s:fielderror标签来显示。可以通过fieldName属性显示指定字段的错误
+	问题三：若是simple主题，且使用s:fielderror filedName="filedname"></s:fielderror>来显示错误消息，则该消息在一个ul,li,span中，如何去除ul,li,span呢？
+		在template.simple下面的filederror.ftl定义了simple主题下，s:fielderror标签显示错误消息的样式。所以修改还配置文件即可。在src下新建template.simple包，新建filederror.ftl文件，把原生的filederror.ftl中的内容复制到新建的filederror.ftl中，然后剔除ul,li,span部分即可
+		
     -->
 
 	 <s:form action="testConversion" theme="simple">
@@ -2228,7 +2231,7 @@ public class ConversionAction extends ActionSupport {
 	- `在属性文件中添加如下键值对：invalid.fieldvalue.fieldName=Custom error message`
 - `定制出错消息的样式：
 	- `每一条出错消息都被打包在一个HTML span元素里，可以通过覆盖其行标为errorMessage的那个css样式来改变出错消息的格式。`
-- `显示错误消息：如果是simple主题，可以通过<s:fielderror name="filedname"></s:fielderror>标签显示错误消息`
+- `显示错误消息：如果是simple主题，可以通过<s:fielderror filedName="filedname"></s:fielderror>标签显示错误消息`
 
 `ConversionAction.properties`
 ```properties
