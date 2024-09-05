@@ -2237,3 +2237,145 @@ public class ConversionAction extends ActionSupport {
 ```properties
 invalid.fieldvalue.age=\u9519\u8bef\u7684\u5e74\u9f84\u683c\u5f0f.
 ```
+
+
+## 定制类型转换器
+`自定义类型转换器必须实现ongl.TypeConverter接口或对这个接口的某种具体实现做扩展。`
+![[Pasted image 20240906004235.png]]
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+
+	<!--
+	如何自定义类型转换器？
+	1、为什么需要自定义类型转换器？
+		因为Struts 不能自动完成字符串引用类型的转换。
+	2、如何自定义类型转化器？
+		1.开发类型转换器的类：
+			扩展StrutsTypeConverter类
+		2.配置类型转换器：
+			有两种方式：
+			·基于字段的配置:
+				>在字段所在的model(可能是Acition，可能是一个JavaBean)的包下，新建一个ModelClassName-conversion.properties文件
+				>在该文件中输入键值对：fieldName=类型转换器的全类名.
+			·基于类型的配置：
+				>在src下新建xword-conversion.properties
+				>键入：待转换的类型=类型转换其的全类名。
+			
+	-->
+	 <s:form action="testConversion" theme="simple">
+	     Age:<s:testfield name="age" label="Age"></s:testfield>
+	     ${fieldErros.age[0]}
+	     <s:fielderror fieldName="age"></s:fielderror>
+	     <br>
+
+
+		Birth：<s:textfield filedName="birth"></s:textfield>
+		<s:fielderror fieldName="birth"></s:fielderror>
+		<br>
+	    <s:submit></s:submit>
+    </s:form>
+
+    <s:form action="testConversion">
+	    <s:testfield name="age" label="Age"></s:testfield>
+	    <s:submit></s:submit>
+    </s:form>
+</body>
+</html>
+
+```
+
+```java
+public class ConversionAction extends ActionSupport {
+
+	private static final long serialVersionUID = 1L;
+
+    // 私有字段 age
+    private int age;
+
+    // 获取 age 的方法
+    public int getAge() {
+        return age;
+    }
+
+    // 设置 age 的方法
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+	// 私有字段 birth
+    private Date birth;
+
+    // 获取 birth 的方法
+    public Date getBirth() {
+        return birth;
+    }
+
+    // 设置 birth 的方法
+    public void setBirth(Date birth) {
+        this.birth = birth;
+    }
+	
+
+	public String execute(){
+
+		System.out.println("age：" + age);
+		return "success";
+
+	}
+}
+```
+
+`基于字段的配置`
+```Java
+import org.apache.struts2.util.StrutsTypeConverter;
+import java.util.Map;
+
+public class DateConverter extends StrutsTypeConverter {
+
+	private DateFormat dateFormat;
+
+	public DateConverter(){
+		dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+	}
+
+    @Override
+    public Object convertFromString(Map context, String[] values, Class toClass) {
+        // 调用父类方法，不进行任何重写
+        if(toClass == Date.class){
+	        if(values != null && values.length > 0){
+		        String value = values[0];
+		        try{
+			        return dateFormat.parseObject(value);
+		        }catch(ParseException e){
+			        e.printStackTrace();
+		        }
+		        
+	        }
+        }
+        return values;
+    }
+
+    @Override
+    public String convertToString(Map context, Object o) {
+        // 调用父类方法，不进行任何重写
+	    if(o instanceof Date){
+		    Date date = (Date) o;
+		    return dateFormat.format(date);
+	    }
+        return null;
+    }
+}
+
+```
+`ConversionAction-conversion.properties`
+```.properties
+birth=全类名
+```
