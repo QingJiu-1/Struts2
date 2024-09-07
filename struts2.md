@@ -2697,7 +2697,7 @@ public class Department {
     <!-- 页面内容 -->
     <s:form action="testComplextProperty">
 	    <s:textfield name="deptName" label="DeptName"></s:textfield>
-	    <!--映射属性的属性-->
+	    <!--映射属性的属性的属性也是可以使用全局类型转换器 -->
 	    <s:textfield name="mgr.naem" label="MgrName"></s:textfield>
 	    <s:textfield name="mgr.birth" label="MgrBirth"></s:textfield>
 	    <s:submit></s:submit>
@@ -2740,12 +2740,173 @@ public class TestComlextPropertyAction extends ActionSupport implements ModelDri
 	        <result> /success.jsp </result>
 	        <result name="input"> /index.jsp </result>
         </action>
-        <action name="" calss="TestComlextPropertyAction全类名">
+        <action name="testComplextProperty" calss="TestComlextPropertyAction全类名">
 	        <result>/success.jsp</result>
         </action>
     </package>
 </struts>
 ```
+
+`Struts还允许填充Conllection里的对象，这常见于需要快速录入数据的场景`
+
+```Java
+
+public class TestCollectionAction extends ActionSupport {
+
+    private static final long serialVersionUID = 1L;
+
+    private Collection<Manager> mgrs = null;
+
+    @Override
+    public String execute() throws Exception {
+        return SUCCESS;
+    }
+
+    // Getter 方法
+    public Collection<Manager> getMgrs() {
+        return mgrs;
+    }
+
+    // Setter 方法
+    public void setMgrs(Collection<Manager> mgrs) {
+        this.mgrs = mgrs;
+    }
+}
+
+```
+
+`为其添加配置`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="testConversion" class="com.QingJiu.struts2.ConversionAction">
+	        <result> /success.jsp </result>
+	        <result name="input"> /index.jsp </result>
+        </action>
+        <action name="testComplextProperty" calss="TestComlextPropertyAction全类名">
+	        <result>/success.jsp</result>
+        </action>
+        <action name="testConversion2" calss="TestCollectionAction全类名">
+	        <result>/success.jsp</result>
+        </action>
+        
+    </package>
+</struts>
+```
+
+
+## `消息处理与国际化`
+`概述：`
+- `在程序设计领域，把在无需改写源代码即可让开发出来的应用程序能够支持多种语言和数据格式的技术称为国际化.
+- `与国际化对应的时本地化，指让一个具备国际化支持的应用程序支持某个特定的地区.`
+- `Struts2国际化是建立在Java国际化基础上的：`
+	- `与不同国家/语言提供对应的消息资源文件`
+	- `Struts2矿建会根据请求中包含的Locale加载对应的资源文件`
+	- `通过程序代码取得该资源文件中指定key对应的消息`
+
+`创建动态的java工程`
+`1、国际化的目标`
+	>`如何配置国际化资源文件`
+		`Action范围资源文件：在Action类文件所在的路径建立名为Action_语言_国家.properties的文件`
+		`包范围资源文件：在包的根路径下建立文件名为package_语言_国家.properties的属性文件，一旦建立，处于该包下的所以Action都可以访问该资源文件。注意：包范围资源文件的bassName就是package，不是Action所在的包名。`
+		`全局资源文件`
+			`命名方式：basename_语言_国家.properties`
+			`struts.xml：<constant name="struts.custom.i18n.resources" value="baseName"/>`
+			`struts.properties：struts.custom.i18n.resources=baseName`
+		`临时指定资源文件：<s:i18n.../>标签的name属性指定临时的国际化资源文件`
+		`国际化资源文件加载的顺序如何？ 离当前Action较近的将被优先加载`
+			``
+	>`如何在页面上和Action类中访问国际化资源文件的value值`
+		`在Action类中.若Action实现了TextProvider 接口，则可以调用其getText()方法获取value值。`
+			`通过继承ActionSupport的方式。`
+		`页面上可以使用s:text标签；对于表单标签可以使用表单标签的key属性值`
+			`若有占位符，则可以使用s:text标签的s:param子标签来添充占位符`
+			`可以利用标签和OGNL表达式直接访问值栈中的属性值(对象栈和Map栈)`
+	>`实现通过超链接切换语言`
+	
+
+`全局资源文件：`
+`i18n.properties`
+```.properties
+username=UserName
+password=Password
+submit=Submit
+time=Time:{0}
+```
+`i18n_en_US.properties`
+```.properties
+username=UserName
+password=Password
+submit=Submit
+time=Time:{0}
+```
+`i18n_zh_CN.properties`
+```.properties
+username=\u7528\u6237\u540D
+password=\u5BC6\u7801
+submit=\u63D0\u4EA4
+time=\u65F6\u95F4:{0}
+```
+`web.xml`
+```xml
+<filter>
+    <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    <!-- Optional init parameters can be configured here -->
+</filter>
+
+<filter-mapping>
+    <filter-name>struts2</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+
+`struts.xml`
+```xml
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+       
+    </package>
+</struts>
+```
+
+`i18n.jsp`
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>i18n Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="">
+	    <!--label的方式是把label写死在标签里-->
+	    <s:textfield name="username" label="UserName"></s:textfield>
+
+		<!--key的方式是直接上资源文件中获取value值-->
+	    <s:textfield name="username" key="UserName"></s:textfield>
+		<s:possword name="password" key="PassWord"></s:possword>
+		
+    </s:form>
+</body>
+</html>
+```
+
+
 
 
 
