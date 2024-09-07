@@ -2265,10 +2265,12 @@ invalid.fieldvalue.age=\u9519\u8bef\u7684\u5e74\u9f84\u683c\u5f0f.
 			·基于字段的配置:
 				>在字段所在的model(可能是Acition，可能是一个JavaBean)的包下，新建一个ModelClassName-conversion.properties文件
 				>在该文件中输入键值对：fieldName=类型转换器的全类名.
+				>第一次使用该转换器时创建实例。
+				>该类型转换器是单实例的
 			·基于类型的配置：
 				>在src下新建xword-conversion.properties
 				>键入：待转换的类型=类型转换其的全类名。
-			
+				>在当前struts2应用被加载时创建实例。
 	-->
 	 <s:form action="testConversion" theme="simple">
 	     Age:<s:testfield name="age" label="Age"></s:testfield>
@@ -2292,6 +2294,7 @@ invalid.fieldvalue.age=\u9519\u8bef\u7684\u5e74\u9f84\u683c\u5f0f.
 
 ```
 
+`==方法一：基于字段==`
 ```java
 public class ConversionAction extends ActionSupport {
 
@@ -2375,7 +2378,377 @@ public class DateConverter extends StrutsTypeConverter {
 }
 
 ```
+
 `ConversionAction-conversion.properties`
 ```.properties
-birth=全类名
+birth=DateConverter的全类名
 ```
+
+`Customer.java`
+```Java
+public class Custormer{
+
+	// 私有字段 age
+    private int age;
+
+    // 获取 age 的方法
+    public int getAge() {
+        return age;
+    }
+
+    // 设置 age 的方法
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+	// 私有字段 birth
+    private Date birth;
+
+    // 获取 birth 的方法
+    public Date getBirth() {
+        return birth;
+    }
+
+    // 设置 birth 的方法
+    public void setBirth(Date birth) {
+        this.birth = birth;
+    }
+
+	@Override 
+	public String toString() { 
+		
+		return "Customer{birth='" + birth + "', age=" + age + "}"; 
+		
+	}
+	
+
+
+}
+```
+`重写ConversionAction方法使其继承ModelDriven<Customer>`
+```Java
+public class ConversionAction extends ActionSupport implements ModelDriven<Custormer> {
+
+	private static final long serialVersionUID = 1L;
+	
+	private Customer model;
+
+	@Override 
+	public Customer getModel() { 
+		
+		model = new Custormer();
+		return model; 
+		
+	}
+	
+	public String execute(){
+
+		System.out.println("model：" + model);
+		return "success";
+
+	}
+
+	
+}
+```
+`添加属性文件Custormer-conversion.properties`
+```.properties
+birth=DateConverter的全类名
+```
+
+`==方法二：基于类型==`
+`xwork-conversion.properties`
+```.properties
+java.util.Data=DateConverter的全类名
+```
+
+
+`实例：创建时机的不同会导致无法对其转换格式`
+`在web.xml中添加param`
+```XML
+
+<context-param>
+	<param-name>pattern</param-name>
+	<param-value>yyyy-MM-dd hh:mm:ss</paaram-value>
+</context-param>
+
+<filter>
+    <filter-name>struts2</filter-name>
+    <filter-class>org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    <!-- Optional init parameters can be configured here -->
+</filter>
+
+<filter-mapping>
+    <filter-name>struts2</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+
+```Java
+import org.apache.struts2.util.StrutsTypeConverter;
+import java.util.Map;
+
+public class DateConverter extends StrutsTypeConverter {
+
+	private DateFormat dateFormat;
+
+	public DateConverter(){
+		//获取当前WEB应用的初始化参数pattern
+		ServletContext servletContext ServletContext.getServletContext();
+		String pattern = servletContext.getInitParameter("pattern");
+		dateFormat = new SimpleDateFormat(pattern);
+	}
+
+    @Override
+    public Object convertFromString(Map context, String[] values, Class toClass) {
+        // 调用父类方法，不进行任何重写
+        if(toClass == Date.class){
+	        if(values != null && values.length > 0){
+		        String value = values[0];
+		        try{
+			        return dateFormat.parseObject(value);
+		        }catch(ParseException e){
+			        e.printStackTrace();
+		        }
+		        
+	        }
+        }
+        return values;
+    }
+
+    @Override
+    public String convertToString(Map context, Object o) {
+        // 调用父类方法，不进行任何重写
+	    if(o instanceof Date){
+		    Date date = (Date) o;
+		    return dateFormat.format(date);
+	    }
+        return null;
+    }
+}
+```
+
+`上面实例代码有个问题，就是要注意创建时机，下面代码就是对其的优化：`
+```Java
+import org.apache.struts2.util.StrutsTypeConverter;
+import java.util.Map;
+
+public class DateConverter extends StrutsTypeConverter {
+
+	private DateFormat dateFormat;
+
+	public DateConverter(){
+		System.out.println("DateConverter.....");
+	}
+
+	public DateFormat getDateFormat(){
+
+		if( dateFormat == null){
+			//获取当前WEB应用的初始化参数pattern
+			ServletContext servletContext ServletContext.getServletContext();
+			String pattern = servletContext.getInitParameter("pattern");
+			dateFormat = new SimpleDateFormat(pattern);
+		}
+
+		return dateFormat;
+
+	}
+
+    @Override
+    public Object convertFromString(Map context, String[] values, Class toClass) {
+        // 调用父类方法，不进行任何重写
+        if(toClass == Date.class){
+	        if(values != null && values.length > 0){
+		        String value = values[0];
+		        try{
+			        return dateFormat.parseObject(value);
+		        }catch(ParseException e){
+			        e.printStackTrace();
+		        }
+		        
+	        }
+        }
+        return values;
+    }
+
+    @Override
+    public String convertToString(Map context, Object o) {
+        // 调用父类方法，不进行任何重写
+	    if(o instanceof Date){
+		    Date date = (Date) o;
+		    return dateFormat.format(date);
+	    }
+        return null;
+    }
+}
+```
+
+## `类型转换与复杂数据配合使用`
+
+`创建两个类：`
+`Manager.java`
+```Java
+public class Manager{
+
+	private String name;
+
+	private Date birth;
+
+
+	// Getter for name 
+	public String getName() { 
+		return name; 
+	} 
+	
+	// Setter for name 
+	public void setName(String name) { 
+		this.name = name; 
+	} 
+	
+	// Getter for birth 
+	public Date getBirth() { 
+		return birth; 
+	} 
+	
+	// Setter for birth 
+	public void setBirth(Date birth) { 
+		this.birth = birth; 
+	}
+
+	@Override 
+	public String toString() { 
+		return "Manager{name='" + name + "', birth=" + birth + "}"; 
+	}
+
+}
+```
+
+`Department.java`
+```Java
+public class Department {
+
+	/**
+		1、Department 是模型，实际录入的Department.deptName 可以直接写到s:textfield的name属性中。那么 mgr 属性如何处理？
+		Struts2 表单标签的name 值可以被复位属性的属性：name=mgr.name ,name=mgr.birth
+
+		2、mgr 中有一个Date类型的 birth 属性， struts2 可以完成自动的类型转换吗？
+		全局的类型转换器可以正常工作
+
+
+		
+	*/
+
+    private Integer id;
+    private String deptName;
+    private Manager mgr;
+
+    // Getter for id
+    public Integer getId() {
+        return id;
+    }
+
+    // Setter for id
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    // Getter for deptName
+    public String getDeptName() {
+        return deptName;
+    }
+
+    // Setter for deptName
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+
+    // Getter for manager
+    public Manager getMgr() {
+        return mgr;
+    }
+
+    // Setter for manager
+    public void setMgr(Manager mgr) {
+        this.mgr = mgr;
+    }
+
+    // Override toString method
+    @Override
+    public String toString() {
+        return "Department{id=" + id + 
+               ", deptName='" + deptName + "'" + 
+               ", manager=" + (mgr != null ? mgr.toString() : "null") + "}";
+    }
+}
+
+```
+
+`complext-property.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testComplextProperty">
+	    <s:textfield name="deptName" label="DeptName"></s:textfield>
+	    <!--映射属性的属性-->
+	    <s:textfield name="mgr.naem" label="MgrName"></s:textfield>
+	    <s:textfield name="mgr.birth" label="MgrBirth"></s:textfield>
+	    <s:submit></s:submit>
+    </s:form>
+</body>
+</html>
+```
+`TestComlextPropertyAction.java`
+```Java
+public class TestComlextPropertyAction extends ActionSupport implements ModelDriven<Department>{
+
+	private static final long serialVersionUID = 1L; //固定版本的id
+
+	private Department department;
+
+	@Override 
+	public Department getModel() { 
+		department = new Department;
+		return department; 
+	}
+
+    @Override
+    public String execute() throws Exception {
+        return super.execute();
+    }
+}
+
+```
+
+`sturts.xml的配置文件`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+        <!-- 这里可以定义 actions, interceptors 等 -->
+        <action name="testConversion" class="com.QingJiu.struts2.ConversionAction">
+	        <result> /success.jsp </result>
+	        <result name="input"> /index.jsp </result>
+        </action>
+        <action name="" calss="TestComlextPropertyAction全类名">
+	        <result>/success.jsp</result>
+        </action>
+    </package>
+</struts>
+```
+
+
+
+
+
+

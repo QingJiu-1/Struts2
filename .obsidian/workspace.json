@@ -8,24 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "5c365a2463a7ceeb",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "struts2.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
             "id": "12364f1fd549a129",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "jsp空格式.md",
+                "file": "struts2.md",
                 "mode": "source",
                 "source": false
               }
@@ -146,8 +134,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -159,11 +146,11 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "5c365a2463a7ceeb",
+  "active": "12364f1fd549a129",
   "lastOpenFiles": [
-    "Pasted image 20240906004235.png",
     "jsp空格式.md",
     "struts2.md",
+    "Pasted image 20240906004235.png",
     "Pasted image 20240831114633.png",
     "Pasted image 20240831104103.png",
     "Pasted image 20240831100513.png",
