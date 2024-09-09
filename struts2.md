@@ -2837,13 +2837,14 @@ username=UserName
 password=Password
 submit=Submit
 time=Time:{0}
+time2=Time:${date}
 ```
 `i18n_en_US.properties`
 ```.properties
 username=UserName
 password=Password
 submit=Submit
-time=Time:{0}
+time2=Time:${date}
 ```
 `i18n_zh_CN.properties`
 ```.properties
@@ -2851,6 +2852,7 @@ username=\u7528\u6237\u540D
 password=\u5BC6\u7801
 submit=\u63D0\u4EA4
 time=\u65F6\u95F4:{0}
+time2=\u65F6\u95F4:${date}
 ```
 `web.xml`
 ```xml
@@ -2896,12 +2898,106 @@ time=\u65F6\u95F4:{0}
     <s:form action="">
 	    <!--label的方式是把label写死在标签里-->
 	    <s:textfield name="username" label="UserName"></s:textfield>
+	    <!-- 
+	    若label标签使用 %{getText('username')} 的方式就也可以从国际化资源文件中获取value值了，因为此时在对象栈中有DefaultTextProvider的一个实例，该对象中提供了访问国际化资源文件的getText()方法，同时还需要通知struts2框架label中放入的不再是一个普通的字符串，而是一个OGNL表达式，所以使用%{}把getText()包装起来，以强制进行OGNL解析。
+	     -->
+	    <s:textfield name="username" label="%{getText('username')}"></s:textfield>
+	    
 
 		<!--key的方式是直接上资源文件中获取value值-->
-	    <s:textfield name="username" key="UserName"></s:textfield>
-		<s:possword name="password" key="PassWord"></s:possword>
+	    <s:textfield name="username" key="username"></s:textfield>
+		<s:possword name="password" key="password"></s:possword>
+		<s:submit key="submit"></s:submit>
 		
     </s:form>
+
+	<s:text name="time">
+		<s:param value="date"></s:param>
+	</s:text>
+	<br>
+	<s:text name="time2"></s:text>
+	<br>
+
+	<s:form action="" theme="simple">
+	   <!-- 
+		   页面上可以直接使用 <s:text name=""/> 标签来访问国际资源文法里的value值。
+		 -->
+	    <s:text name="username"/>:<s:textfield name="username" label="%{getText('username')}"></s:textfield>
+	    
+	    <s:text name="username"/>:<s:textfield name="username" key="username"></s:textfield>
+		<s:text name="password"/>:<s:possword name="password" key="password"></s:possword>
+		<s:submit key="submit" value="%{getText('submit')}"></s:submit>
+    </s:form>
+</body>
+</html>
+```
+
+`TestI18nAction.java`
+```Java
+public class TestI18nAction extends ActionSupport{
+
+	private static final long serialVersionUID = 1L;
+
+	private Date date = null;
+
+	public Date getDate(){
+		return date;
+	}
+
+	public void setDate(Date date){
+		this.date = date;
+	}
+
+
+	@Override
+	public String execute() throws Exception{
+
+		date = new Date();
+
+		//1、在Action中访问国际化资源文件的value值
+		String username = getText("username");
+		System.out.println(username);
+
+		
+
+		//2、带占位符的
+		String time = getText("time",Arrays.asList(date)));
+		System.out.println(time);
+		return success;
+
+	}
+
+}
+```
+`配置struts.xml`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+       <action name="testI18n" calss="TestI18nAction的全类名">
+	       <result>/i18n.jsp</result>
+       </action>
+    </package>
+</struts>
+```
+`i18n.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>i18n Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <a href="testI18n"> Test I18n </a>
 </body>
 </html>
 ```
