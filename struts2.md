@@ -2985,6 +2985,29 @@ public class TestI18nAction extends ActionSupport{
     </package>
 </struts>
 ```
+`index.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <a href="testI18n"> Test I18n </a>
+</body>
+</html>
+```
+
+
+## `利用超链接实现动态加载国际化资源文件`
+`1、关键之处在于知道Struts2框架是如何确定Local对象的；`
+`2、可以通过阅读I18N 拦截器知道。`
+![[Pasted image 20240910205536.png]]
+
 `i18n.jsp`
 ```JSP
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
@@ -2996,16 +3019,31 @@ public class TestI18nAction extends ActionSupport{
     <title>i18n Page</title>
 </head>
 <body>
-    <!-- 页面内容 -->
-    <a href="testI18n"> Test I18n </a>
+
+	<a href="testI18n.action?request_Locale=en_US">English</a>
+	<a href="testI18n.action?request_Locale=zh_CN">中文</a>
+	<br>
+
+	<a href="index.jsp"> Index Page </a>
+
+	<s:text name="time">
+		<s:param value="date"></s:param>
+	</s:text>
+	<br>
+	<s:text name="time2"></s:text>
+	<br>
+
 </body>
 </html>
 ```
-
-
-
-
-
-
-
+`3、具体确定Locale对象的进程`
+	>`Struts2使用i18n拦截器处理国际化，并且将其注册在默认的拦截器栈中`
+	>`i18n拦截器在执行Action方法前，自动查找请求中一个名为request_locale的参数`
+		`如果该参数存在，拦截器将其作为参数，转换成Locale对象，并将其设置为用户默认的Locale(代表国家/语言环境)。并把其设置为session的WW_TRANS_I18N_LOCALE属性。`
+	>`若request 没有名为request_locale的参数，则i18n拦截器会从Session中获取WW_TRANS_I18N_LOCALE的属性值。若该值不为空，则将该属性值为浏览器的默认Locale`
+	>`若session中的WW_TRANS_I18N_LOCALE的属性值为空，则从ActionContext中获取Locale对象`
+`4、具体实现：只需要在超链接的后面附着 request_locale的请求参数，值是语言国家代码。`
+	`<a href="testI18n.action?request_Locale=en_US">English</a>
+	`<a href="testI18n.action?request_Locale=zh_CN">中文</a>`
+	`注意：超链接必须是一个Struts2的请求，即使i18n拦截器工作！`
 
