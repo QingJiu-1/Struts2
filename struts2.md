@@ -3065,7 +3065,16 @@ public class TestI18nAction extends ActionSupport{
 	- `编程验证：通过编写代码来验证用户输入`
 
 
-
+`声明式验证：`
+- `声明式验证程序可以分为两类：`
+	`字段验证：判断某个字段属性的输入是否有效`
+	`非字段验证：不只针对某个字段，而是针对多个字段的输入值之间的逻辑关系进行校验。`
+- `使用一个声明式验证程序需要3个步骤：`
+	`1、确定哪些Action字段需要验证`
+	`2、编写一个验证程序配置文件.它的文件名必须是以下两种格式之一：`
+		`若一个Action类的多个action使用同样的验证规则： ActionName.validation.xml`
+		`若一个Action类的多个action使用不同的验证规则：ActionClass-alias-validation.xml`
+	`3、确定验证失败时的响应页面：在struts.xml文件中定义一个<result name="input">的元素`
 `TestValidtionAction.java`
 ```Java
 import com.opensymphony.xwork2.ActionSupport;
@@ -3105,6 +3114,129 @@ public class TestValidtionAction extends ActionSupport {
 </head>
 <body>
     <!-- 页面内容 -->
+    <s:form action="testValidation">
+	    <s:textfiled name="age" label="Age"></s:testfile>
+	    <s:submit></s:submit>
+    </s:form>
 </body>
 </html>
 ```
+
+`struts.xml`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+       <action name="testValidation" calss="testValidation的全类名">
+	       <result>/success.jsp</result>
+	       <!--若验证失败转向的input-->
+	       <result name="input">/validation.jsp</result>
+       </action>
+    </package>
+</struts>
+```
+
+`success.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <h4>Success Page</h4>
+</body>
+</html>
+```
+
+`TestValidtionAction-validation.xml`
+```XML
+<!DOCTYPE validators PUBLIC
+        "-//Apache Struts//XWork Validator 1.0.2//EN"
+        "http://struts.apache.org/dtds/xwork-validator-1.0.2.dtd">
+
+<validators>
+    <field name="username">
+        <field-validator type="requiredstring">
+            <message key="requiredstring"/>
+        </field-validator>
+    </field>
+    <field name="password">
+        <field-validator type="requiredstring">
+            <message key="requiredstring"/>
+        </field-validator>
+    </field>
+</validators>
+
+```
+
+``
+```XML
+<!DOCTYPE validators PUBLIC
+		"-//Apache Struts//XWork Validator 1.0.2//EN"
+		"E:\Struts2\struts-2.3.20-all\struts-2.3.20\src\xwork-core\src\main\resources\xwork-validator-1.0.3.dtd">
+
+
+<validators>
+	<!--针对age属性进行验证。基于字段的验证-->
+	<field name="age">
+		<field-validator type="int">
+		<param name="min">20</param>
+		<param name="max">50</param>
+		<message>Age needs to be between ${min} and ${max}</message>
+		</field-validator>
+	</field>
+</validators>
+```
+
+`1、先明确哪一个Action的哪一个字段进行验证：age`
+`2、编写配置文件：`
+	`把E:\Struts2\struts-2.3.20-all\struts-2.3.20\apps\struts2-blank\WEB-INF\classes\example下的Login-validation.xml文件复制到当前Action所在包下。`
+	`把该配置文件改为: 把Login 改为Action的名字`
+	`在配置文件中可以定义错误消息：`
+```
+<field name="age">
+		<field-validator type="int">
+		<param name="min">20</param>
+		<param name="max">50</param>
+		<message>Age needs to be between ${min} and ${max}</message>
+		</field-validator>
+	</field>
+```
+	`错误消息可以国际化吗？`
+	`在资源文件中写好对应的信息`
+```
+<message key="error.int"></message>
+```
+`3、若验证失败，则转向input 的result.所以需要name=input 的result`
+	`<result name="input">/validation.jsp</result>`
+`4、如何显示错误消息？`
+	`若使用的是非simple主题，则自动显示错误消息`
+	`若使用的是simple主题，则需要自己打印`
+``` 
+	
+	<s:form action="testValidation" theme="simple">
+	    Age: <s:textfiled name="age" label="Age"></s:testfile>
+	    <s:fielderror fieldName="age" ></s:fielderror>
+	    ${fieldError.age[0]}
+	    <s:submit></s:submit>
+    </s:form>
+```
+	`注意：若一个Action类可以应答多个action请求，多个action请求使用不同的验证规则，怎么办？`
+		`为每一个不同的action请求定义其对应的验证文件：ActionClassName-AliasName-validation.xml`
+		`不带别名的配置文件：ActionClassName-Alias-validation.xml中的验证规则依然会发生作用。可以把各个action公有的验证规则配置在其中。但需要注意的是，只适用于某一个action的请求的原则规则就不要在这里配置了。`
+	`声明式验证框架的原理:`
+		`struts2默认的拦截器栈中提供了一个validation拦截器`
+		`每个具体的验证规则都会对应具体的一个验证其。有一个配置文件把验证规则名称和验证器关联起来。而实际上验证的是那个验证器。`
+
+`验证程序的配置`
+![[Pasted image 20240915165718.png]]
