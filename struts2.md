@@ -3047,3 +3047,64 @@ public class TestI18nAction extends ActionSupport{
 	`<a href="testI18n.action?request_Locale=zh_CN">中文</a>`
 	`注意：超链接必须是一个Struts2的请求，即使i18n拦截器工作！`
 
+
+## `Struts2运行流程分析`
+`运行流程图：`
+![[Pasted image 20240915100741.png]]
+
+
+
+## `输入验证`
+`概述：`
+- `一个健壮的web应用程序必须确保用户输入是合法、有效的。`
+- `Struts2的输入验证：`
+	- `基于XWork Validation Framework 的声明验证：Struts2提供了一些基于XWork Validation Framework的内建验证程序。使用这些验证程序不需要编程，只要一个XML文件里对验证程序应该如何工作作出声明就可以了，需要声明的内容包括：`
+		- `哪些字段需要进行验证`
+		- `使用什么验证规则`
+		- `在验证失败说应该把什么样的出错消息发送到浏览器端`
+	- `编程验证：通过编写代码来验证用户输入`
+
+
+
+`TestValidtionAction.java`
+```Java
+import com.opensymphony.xwork2.ActionSupport;
+
+public class TestValidtionAction extends ActionSupport {
+
+    private int age;
+
+    // Getter method for 'age'
+    public int getAge() {
+        return age;
+    }
+
+    // Setter method for 'age'
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    
+    @Override
+    public String execute() throws Exception {
+       return SUCCESS;
+    }
+}
+
+```
+
+`validtion.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+</body>
+</html>
+```
