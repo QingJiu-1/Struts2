@@ -3462,7 +3462,298 @@ public class TestValidationAction extends ActionSupport {
 - `字段验证字段优先，可以为一个字段配置多个验证规则`
 - `非字段验证规则优先`
 - `大部分验证规则支持两种验证器，但个别的验证规则只能使用非字段验证，例如表达式验证`
-- 
 
+
+## `错误消息的重用性`
+`不同的字段使用同样的验证规则，而且使用同样的响应消息`
+```jsp
+	<s:actionerror/>
+	<s:form action="testValidation" theme="simple">
+	    Age: <s:textfiled name="age" label="Age"></s:testfile>
+	    <s:fielderror fieldName="age" ></s:fielderror>
+	    ${fieldError.age[0]}
+
+
+		Password: <s:password name="password"></s:password>
+		Password2: <s:password name="password2"></s:password>
+
+		Count：<s:textfield name="count"></s:textfield>
+		<s:fielderror fieldName="count"></s:fielderror>
+	    <s:submit></s:submit>
+    </s:form>
+```
+
+`添加count字段`
+```Java
+import com.opensymphony.xwork2.ActionSupport;
+
+public class TestValidationAction extends ActionSupport {
+
+    private int age;
+    private String password;
+    private String password2;
+    private int count;
+
+    // Getter method for 'age'
+    public int getAge() {
+        return age;
+    }
+
+    // Setter method for 'age'
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    // Getter method for 'password'
+    public String getPassword() {
+        return password;
+    }
+
+    // Setter method for 'password'
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    // Getter method for 'password2'
+    public String getPassword2() {
+        return password2;
+    }
+
+    // Setter method for 'password2'
+    public void setPassword2(String password2) {
+        this.password2 = password2;
+    }
+
+    // Getter method for 'count'
+    public int getCount() {
+        return count;
+    }
+
+    // Setter method for 'count'
+    public void setCount(int count) {
+        this.count = count;
+    }
+
+    @Override
+    public String execute() throws Exception {
+        return SUCCESS;
+    }
+}
+
+```
+
+`补上其对应的规则：`
+```XML
+<field name="age">
+		<field-validator type="int">
+		<param name="min">20</param>
+		<param name="max">50</param>
+		<message key="error.int"></message>
+		</field-validator>
+</field>
+
+<field name="count">
+		<field-validator type="int">
+		<param name="min">1</param>
+		<param name="max">10</param>
+		<message key="error.int"></message>
+		</field-validator>
+</field>
+
+<validator type="expression">
+	<param name="expression"> ![CDATA[password==password2]] </param>
+	<message> password is not equals to password2 </message>
+</validator>
+```
+
+`i18n.properties`
+```properties
+error.int=${filedName} needs to be between ${min} and ${max}
+```
+
+`也可使实现国际化：`
+```properties
+error.int=${getText(filedName)} needs to be between ${min} and ${max}
+
+age=\u5E74\u9F84
+count=\u6570\u91CF
+
+```
+
+
+## `自定义验证器`
+
+`定义一个验证器的类`
+	>`自定义的验证器都需要实现 Validator
+	>`可以选择继承ValidatorSupport 或 FieldValidatorSupport
+	>`若希望实现一个一般的验证器，则可以继承ValidatorSupport
+	>`若希望实现一个字段验证器，则可以继承FieldValidatorSupport
+	>`具体实现可以参考目前已有的验证器
+	>`若验证程序需要接受一个输入参数，需要为这个参数增加一个相应的属性
+`在配置文件中配置验证器`
+	>`默认的情况下mStruts2会在类的路径的根目录下加载validators.xml文件。在该文件中加载验证器。该文件的定义方式同默认的验证器的那个配置文件：位于E:\Struts2\struts-2.3.20-all\struts-2.3.20\src\xwork-core\src\main\resources\com\opensymphony\xwork2\validator\validators的default.xml
+	>`若类路径下没有指定的验证器，则从com\opensymphony\xwork2\validator\validators下的default.xml 中的default.xml中的验证器加载。
+`使用：和目前的验证器一样`
+`示例代码：自定义一个18位身份证验证器`
+`创建验证器的类：IDCardValidator`
+```Java
+import com.opensymphony.xwork2.validator.ValidationException;
+import com.opensymphony.xwork2.validator.validators.FieldValidatorSupport;
+
+public class IDCardValidator extends FieldValidatorSupport {
+
+    @Override
+    public void validate(Object object) throws ValidationException {
+       //1、获取字段的名字和值
+		String fieldName = getFieldName();
+        Object value = this.getFieldValue(fieldName, object);
+		//2、验证
+		IDCard idCard = new IDCard();
+		boolean result = idCard.Verify((String)value);
+		//3、若验证失败，则
+		if(!result){
+			addFieldError(fieldName, object);
+		}
+    }
+}
+
+```
+
+`在根目录下定义一个validators.xml文件`
+```XML
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE validators PUBLIC
+        "-//Apache Struts//XWork Validator Definition 1.0//EN"
+        "http://struts.apache.org/dtds/xwork-validator-definition-1.0.dtd">
+
+<!-- START SNIPPET: validators-default -->
+<validators>
+    <validator name="idcard" class="IDCardValidator的全类名"/>
+</validators>
+<!--  END SNIPPET: validators-default -->
+
+```
+
+`在validation.jsp中添加字段`
+```JSP
+	<s:actionerror/>
+	<s:form action="testValidation" theme="simple">
+	    Age: <s:textfiled name="age" label="Age"></s:testfile>
+	    <s:fielderror fieldName="age" ></s:fielderror>
+	    ${fieldError.age[0]}
+
+
+		Password: <s:password name="password"></s:password>
+		Password2: <s:password name="password2"></s:password>
+
+		Count：<s:textfield name="count"></s:textfield>
+		<s:fielderror fieldName="count"></s:fielderror>
+
+		idCard：<s:textfield name="idCard"></s:textfield>
+		<s:fielderror fieldName="idCard"></s:fielderror>
+
+	    <s:submit></s:submit>
+    </s:form>
+```
+
+`在TestValidation中添加idCard的属性`
+```JAVA
+import com.opensymphony.xwork2.ActionSupport;
+
+public class TestValidationAction extends ActionSupport {
+
+    private int age;
+    private String password;
+    private String password2;
+    private int count;
+    private String idCard;
+
+    // Getter method for 'age'
+    public int getAge() {
+        return age;
+    }
+
+    // Setter method for 'age'
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    // Getter method for 'password'
+    public String getPassword() {
+        return password;
+    }
+
+    // Setter method for 'password'
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    // Getter method for 'password2'
+    public String getPassword2() {
+        return password2;
+    }
+
+    // Setter method for 'password2'
+    public void setPassword2(String password2) {
+        this.password2 = password2;
+    }
+
+    // Getter method for 'count'
+    public int getCount() {
+        return count;
+    }
+
+    // Setter method for 'count'
+    public void setCount(int count) {
+        this.count = count;
+    }
+
+    // Getter method for 'idCard'
+    public String getIdCard() {
+        return idCard;
+    }
+
+    // Setter method for 'idCard'
+    public void setIdCard(String idCard) {
+        this.idCard = idCard;
+    }
+
+    @Override
+    public String execute() throws Exception {
+        return SUCCESS;
+    }
+}
+
+```
+
+`在配置文件中声明使用这个验证器：`
+```XML
+<field name="age">
+		<field-validator type="int">
+		<param name="min">20</param>
+		<param name="max">50</param>
+		<message key="error.int"></message>
+		</field-validator>
+</field>
+
+<field name="count">
+		<field-validator type="int">
+		<param name="min">1</param>
+		<param name="max">10</param>
+		<message key="error.int"></message>
+		</field-validator>
+</field>
+
+<field name="idCard">
+		<field-validator type="idcard">
+		<message>It is not a idCard</message>
+		</field-validator>
+</field>
+
+<validator type="expression">
+	<param name="expression"> ![CDATA[password==password2]] </param>
+	<message> password is not equals to password2 </message>
+</validator>
+```
 
 
