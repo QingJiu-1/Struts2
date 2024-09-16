@@ -3240,3 +3240,229 @@ public class TestValidtionAction extends ActionSupport {
 
 `验证程序的配置`
 ![[Pasted image 20240915165718.png]]
+
+## `Struts2内建的验证程序`
+- `required：确保某个字段的值不是空值null`
+- `requiredstring：确保某给定字段的值既不是空值null，也不是空白。`
+	- `trim参数。默认为true，表示struts在验证该字段值之前剔除前后空格`
+- `stringlength：验证一个非空的字段值是不是有足够的长度`
+- `date：确保某给定日期字段的值落在一个给定的范围内`
+- `email：检查给定string值是否是一个合法的email`
+- `url：检查给定string值是否是一个合法url`
+- `regex：检查某给定字段的值是否一个给定的正则表达式模式相匹配：`
+	- `expression*：用来匹配的正则表达式`
+	- `caseSensitive：是否区分字母大小写.默认为true`
+	- `trim：是否去除前后空格.默认true`
+- `int：检查给定整数字段值是否在某一个范围内`
+- `conversion：检查对给定Action属性进行的类型转化是否会导致一个转换错误。该验证程序还可以在默认的类型转换消息的基础上添加一条自定义的消息`
+```XML
+<field name="age">
+		<!-- 设置短路验证：当前验证没有通过，则不再进行下面的验证 -->
+		<field-validator type="conversion" short-circuit="true">
+			<message> Conversion Error Occurred</message>
+		</field-validator>
+
+		<field-validator type="int">
+		<param name="min">20</param>
+		<param name="max">50</param>
+		<message>Age needs to be between ${min} and ${max}</message>
+		</field-validator>
+	</field>
+```
+`短路验证器：`
+- `<field-validator/>元素和<validator/>元素可以指定一个可选的shor-circuit属性，该属性指定该验证器是否是短路验证器，默认值为fales.`
+- `对同一个字段内的多个验证器，如果是一个短路验证器验证失败，则其他验证器不会继续校验`
+
+`为了实现类型转换失败将其停下不继续往下走：对其com.opensymphony.xwork2.interceptor 原代码进行修改。com.opensymphony.xwork2.interceptor创建这个包下在新建这个类ConversionErrorInterceptor`
+```Java
+
+package com.opensymphony.xwork2.interceptor;
+
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionInvocation;
+import com.opensymphony.xwork2.ValidationAware;
+import com.opensymphony.xwork2.conversion.impl.XWorkConverter;
+import com.opensymphony.xwork2.util.ValueStack;
+import org.apache.commons.lang3.StringEscapeUtils;
+
+import java.util.HashMap;
+import java.util.Map;
+
+
+public class ConversionErrorInterceptor extends AbstractInterceptor {
+
+    public static final String ORIGINAL_PROPERTY_OVERRIDE = "original.property.override";
+
+    protected Object getOverrideExpr(ActionInvocation invocation, Object value) {
+        return escape(value);
+    }
+
+    protected String escape(Object value) {
+        return "\"" + StringEscapeUtils.escapeJava(String.valueOf(value)) + "\"";
+    }
+
+    @Override
+    public String intercept(ActionInvocation invocation) throws Exception {
+
+        ActionContext invocationContext = invocation.getInvocationContext();
+        Map<String, Object> conversionErrors = invocationContext.getConversionErrors();
+        ValueStack stack = invocationContext.getValueStack();
+
+        HashMap<Object, Object> fakie = null;
+
+        for (Map.Entry<String, Object> entry : conversionErrors.entrySet()) {
+            String propertyName = entry.getKey();
+            Object value = entry.getValue();
+
+            if (shouldAddError(propertyName, value)) {
+                String message = XWorkConverter.getConversionErrorMessage(propertyName, stack);
+
+                Object action = invocation.getAction();
+                if (action instanceof ValidationAware) {
+                    ValidationAware va = (ValidationAware) action;
+                    va.addFieldError(propertyName, message);
+                }
+
+                if (fakie == null) {
+                    fakie = new HashMap<Object, Object>();
+                }
+
+                fakie.put(propertyName, getOverrideExpr(invocation, value));
+            }
+        }
+
+        if (fakie != null) {
+            // if there were some errors, put the original (fake) values in place right before the result
+            stack.getContext().put(ORIGINAL_PROPERTY_OVERRIDE, fakie);
+            invocation.addPreResultListener(new PreResultListener() {
+                public void beforeResult(ActionInvocation invocation, String resultCode) {
+                    Map<Object, Object> fakie = (Map<Object, Object>) invocation.getInvocationContext().get(ORIGINAL_PROPERTY_OVERRIDE);
+
+                    if (fakie != null) {
+                        invocation.getStack().setExprOverrides(fakie);
+                    }
+                }
+            });
+        }
+
+		//当验证通过了在往后走
+		Object action = invocation.getAction();
+		if (action instanceof ValidationAware) {
+			ValidationAware va = (ValidationAware) action;
+
+			if(va.hasFieldErrors() || va.hasActionErrors()){
+				return "input";
+			}
+			
+		}
+
+        return invocation.invoke();
+    }
+
+    protected boolean shouldAddError(String propertyName, Object value) {
+        return true;
+    }
+}
+
+```
+
+`短路验证：若对一个字段使用多个验证器，默认情况下会执行所有的验证器。若希望前面的验证没有通过，后面的就不要再验证，可以使用短路验证。`
+
+`若类型转换失败，默认情况下还会执行后面的拦截器，还会进行验证。可以通过修改ConversionErrorInterceptor 源代码的方式使当类型转换失败是，不再执行后续的验证拦截器，而直接返回input的result`
+
+
+- `expression和fieldexpression：用来验证字段是否满足一个OGNL表达式`
+	- `前者是一个非字段验证程序，后者是一个字段验证程序`
+	- `前者在验证失败时将生产一个action错误，而后者在验证失败时会生成一个字段错误`
+	- `expression*：用来进行验证的OGNL表达式`
+
+`非字段验证：不是针对某一个字段的验证。 显示非字段验证的错误消息，要使用s:actionerror标签`
+``
+`非字段验证示例：`
+```XML
+<field name="age">
+		<field-validator type="int">
+		<param name="min">20</param>
+		<param name="max">50</param>
+		<message>Age needs to be between ${min} and ${max}</message>
+		</field-validator>
+</field>
+
+<validator type="expression">
+	<param name="expression"> ![CDATA[password==password2]] </param>
+	<message> password is not equals to password2 </message>
+</validator>
+
+```
+
+
+```jsp
+	<s:actionerror/>
+	<s:form action="testValidation" theme="simple">
+	    Age: <s:textfiled name="age" label="Age"></s:testfile>
+	    <s:fielderror fieldName="age" ></s:fielderror>
+	    ${fieldError.age[0]}
+
+
+		Password: <s:password name="password"></s:password>
+		Password2: <s:password name="password2"></s:password>
+	    <s:submit></s:submit>
+    </s:form>
+```
+
+`在TestValidtionAction其中加上对应的字段`
+```Java
+import com.opensymphony.xwork2.ActionSupport;
+
+public class TestValidationAction extends ActionSupport {
+
+    private int age;
+    private String password;
+    private String password2;
+
+    // Getter method for 'age'
+    public int getAge() {
+        return age;
+    }
+
+    // Setter method for 'age'
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    // Getter method for 'password'
+    public String getPassword() {
+        return password;
+    }
+
+    // Setter method for 'password'
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    // Getter method for 'password2'
+    public String getPassword2() {
+        return password2;
+    }
+
+    // Setter method for 'password2'
+    public void setPassword2(String password2) {
+        this.password2 = password2;
+    }
+
+    @Override
+    public String execute() throws Exception {
+        return SUCCESS;
+    }
+}
+
+```
+
+`字段验证vs非字段验证：`
+- `字段验证字段优先，可以为一个字段配置多个验证规则`
+- `非字段验证规则优先`
+- `大部分验证规则支持两种验证器，但个别的验证规则只能使用非字段验证，例如表达式验证`
+- 
+
+
+
