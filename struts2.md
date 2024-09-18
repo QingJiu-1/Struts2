@@ -3757,3 +3757,163 @@ public class TestValidationAction extends ActionSupport {
 ```
 
 
+
+## `文件的上传下载`
+`表单的准备：`
+- `要想使用HTML表单上传一个或多个文件`
+	- `须把HTML表单的enctype属性设置为multipart/form-data`
+	- `须把HTML表单的method属性设置为post`
+	- `需添加<input type="file">字段`
+
+`Struts2对文件上传的支持`
+- `在Struts应用程序里,FileUpload拦截器和Jakarta Commons FileUpload组件可以完成文件的上传`
+
+`创建所需的struts配置文件、web配置文件、i18n的资源化文`
+`struts.xml`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+       
+    </package>
+</struts>
+```
+
+`新建表单：upload.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testUpload" method="post" enctype="multipart/form-data">
+	    <s:file name="ppt" label="PPTFile"></s:file>
+	    <s:textfield name="pptDesc" label="PPTDesc"></s:textfield>
+
+		<s:submit></s:submit>
+    </s:form>
+</body>
+</html>
+```
+
+`创建UploadAction继承父类ActionSupport`
+```Java
+package com.example.action;
+
+import com.opensymphony.xwork2.ActionSupport;
+import org.apache.commons.io.FileUtils;
+
+import java.io.File;
+
+public class UploadAction extends ActionSupport {
+    private static final long serialVersionUID = 1L;
+
+    // 上传文件的临时文件
+    private File ppt;
+    private String pptFileName;
+    private String pptContentType;
+    
+    // 文件描述
+    private String pptDesc;
+
+    // Getter 和 Setter for ppt, pptFileName, pptContentType
+    public File getPpt() {
+        return ppt;
+    }
+
+    public void setPpt(File ppt) {
+        this.ppt = ppt;
+    }
+
+    public String getPptFileName() {
+        return pptFileName;
+    }
+
+    public void setPptFileName(String pptFileName) {
+        this.pptFileName = pptFileName;
+    }
+
+    public String getPptContentType() {
+        return pptContentType;
+    }
+
+    public void setPptContentType(String pptContentType) {
+        this.pptContentType = pptContentType;
+    }
+
+    // Getter 和 Setter for pptDesc
+    public String getPptDesc() {
+        return pptDesc;
+    }
+
+    public void setPptDesc(String pptDesc) {
+        this.pptDesc = pptDesc;
+    }
+
+    @Override
+    public String execute() throws Exception {
+        if (ppt != null) {
+            File destFile = new File("upload/" + pptFileName);
+            FileUtils.copyFile(ppt, destFile);
+            return SUCCESS;
+        }
+        return ERROR;
+    }
+}
+
+```
+
+`添加UploadAction所需的配置信息`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+       <action name="testUpload" class="UploadAction的全类名">
+	       <result>/success.jsp</result>
+       </action>
+    </package>
+</struts>
+```
+
+`创建success.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <h4>Success Page</h4>
+</body>
+</html>
+```
+
+- `struts2的文件上传实际上使用的是Commons FileUpload组件，所以需要导入commons-fileupload-1.3.1.jar commons-io-2.2.jar`
+- `Struts2进行文件上传需要使用FileUpload拦截器`
+- `基本的文件上传：：直接在Action中定义如下3个属性，并提供对应的getter 和setter方法
+	`//文件对应的File对象`
+	`private File ppt;
+	`//文件类型`
+	`private String pptFileName;
+	`//文件名`
+	`private String pptContentType;
+- `使用IO流进行文件上传即可`
