@@ -3862,12 +3862,24 @@ public class UploadAction extends ActionSupport {
 
     @Override
     public String execute() throws Exception {
-        if (ppt != null) {
-            File destFile = new File("upload/" + pptFileName);
-            FileUtils.copyFile(ppt, destFile);
-            return SUCCESS;
-        }
-        return ERROR;
+        ServletContext servletContext = ServletActionContext.getServletContext();
+        String dir = servletContext.getRealPath("/files/"+pptFileName);
+
+		FileOutputStream out = new FileOutputStream(dir);
+		FileInputStream in = new FileInputStream(ppt);
+
+		byte [] buffer = new byte[1024];
+		int len = 0;
+
+		while((len = in.read(buffer)) != -1){
+			out.write(buffer,0,len);
+		}
+
+		out.close();
+		in.close();
+
+        return super.execute;
+    
     }
 }
 
@@ -3917,3 +3929,401 @@ public class UploadAction extends ActionSupport {
 	`//文件名`
 	`private String pptContentType;
 - `使用IO流进行文件上传即可`
+```Java
+@Override
+    public String execute() throws Exception {
+        ServletContext servletContext = ServletActionContext.getServletContext();
+        String dir = servletContext.getRealPath("/files/"+pptFileName);
+
+		FileOutputStream out = new FileOutputStream(dir);
+		FileInputStream in = new FileInputStream(ppt);
+
+		byte [] buffer = new byte[1024];
+		int len = 0;
+
+		while((len = in.read(buffer)) != -1){
+			out.write(buffer,0,len);
+		}
+
+		out.close();
+		in.close();
+
+        return super.execute;
+    
+    }
+```
+- `一次性传多个文件怎么办？`
+	- `若传递多个文件，则上述的3个属性，可改为list类型。多个文件域的name属性值需要一致。`
+```XML
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testUpload" method="post" enctype="multipart/form-data">
+	    <s:file name="ppt" label="PPTFile"></s:file>
+	    <s:textfield name="pptDesc[0]" label="PPTDesc"></s:textfield>
+	    
+		<s:file name="ppt" label="PPTFile"></s:file>
+	    <s:textfield name="pptDesc[1]" label="PPTDesc"></s:textfield>
+	    
+	    <s:file name="ppt" label="PPTFile"></s:file>
+	    <s:textfield name="pptDesc[2]" label="PPTDesc"></s:textfield>
+		<s:submit></s:submit>
+    </s:form>
+</body>
+</html>
+```
+
+```Java
+package com.example.action;
+
+import com.opensymphony.xwork2.ActionSupport;
+import org.apache.commons.io.FileUtils;
+import org.apache.struts2.ServletActionContext;
+
+import javax.servlet.ServletContext;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.List;
+
+public class UploadAction extends ActionSupport {
+    private static final long serialVersionUID = 1L;
+
+    // 上传文件的临时文件
+    private List<File> ppt;
+    private List<String> pptFileName;
+    private List<String> pptContentType;
+    
+    // 文件描述
+    private List<String> pptDesc;
+
+    // Getter 和 Setter for ppt, pptFileName, pptContentType
+    public List<File> getPpt() {
+        return ppt;
+    }
+
+    public void setPpt(List<File> ppt) {
+        this.ppt = ppt;
+    }
+
+    public List<String> getPptFileName() {
+        return pptFileName;
+    }
+
+    public void setPptFileName(List<String> pptFileName) {
+        this.pptFileName = pptFileName;
+    }
+
+    public List<String> getPptContentType() {
+        return pptContentType;
+    }
+
+    public void setPptContentType(List<String> pptContentType) {
+        this.pptContentType = pptContentType;
+    }
+
+    // Getter 和 Setter for pptDesc
+    public List<String> getPptDesc() {
+        return pptDesc;
+    }
+
+    public void setPptDesc(List<String> pptDesc) {
+        this.pptDesc = pptDesc;
+    }
+
+    @Override
+    public String execute() throws Exception {
+        ServletContext servletContext = ServletActionContext.getServletContext();
+        
+        // 遍历每个上传的文件
+        for (int i = 0; i < ppt.size(); i++) {
+            String dir = servletContext.getRealPath("/files/" + pptFileName.get(i));
+            File fileToSave = new File(dir);
+
+            try (FileInputStream in = new FileInputStream(ppt.get(i));
+                 FileOutputStream out = new FileOutputStream(fileToSave)) {
+                 
+                byte[] buffer = new byte[1024];
+                int len;
+
+                while ((len = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, len);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                return ERROR;  // 如果出错，返回 ERROR 状态
+            }
+        }
+
+        return SUCCESS;  // 返回 SUCCESS 状态
+    }
+}
+
+```
+- `可以对上传的文件进行限制吗？例如扩展名，内容类型，上传文件的大小？若可以，若出错，显示什么错误消息？消息可以定制嘛？`
+	- `可以的`
+	- `可以通过配置FileUpoadInterceptor拦截器的参数方式来进行限制`
+		- `maximumSize(optional) - 默认的最大值为2M。上传的单个文件的最大值。`
+		- `allowedTypes(optional) - 允许的上传文件的类型。多个使用逗号，分隔`
+		- `allowedExtensions(optional) - 允许的上传文件的扩展名。多个使用逗号，分隔`
+	- `定制错误消息。可以在国际化资源文件中定义如下的消息：`
+		- `struts.message.error.uploading - 文件上传出错的消息`
+		- `struts.message.error.file.too.large - 文件超过最大值的消息`
+		- `struts.message.error.content.type.not.allowed - 文件内容类型不合法的消息`
+		- `struts.message.error.file.extension.not.allowed - 文件扩展名不合法的消息`
+
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+
+	<interceptors>
+		<interceptor-stack name="QingJiu">
+			<interceptors-ref name="defaultStack">
+				<param name="fileUpload.maximumSize">2000</param>
+				<param name="fileUpload.allowedTypes">text/html,text/xml</param>
+				<param name="fileUpload.allowedExtensions">html,dtd,xml</param>
+			</interceptors-ref>
+		</interceptors-stacke>
+	</interceptors>
+
+       <action name="testUpload" class="UploadAction的全类名">
+	       <result>/success.jsp</result>
+       </action>
+    </package>
+</struts>
+```
+
+	`注意：在struts-2.3.20\src\core\src\main\resources\org\apache\struts2下的default.properties中有对上传的文件总大小的限制。可以使用常量的方式来进行修改`
+	 `struts.multipart.maxSize=2097152`
+
+`国际化资源文件`
+```properties
+struts.message.error.uploading = \u6587\u4EF6\u4E0A\u4F20\u51FA\u9519
+struts.message.error.file.too.large = \u6587\u4EF6\u8D85\u8FC7\u6700\u5927\u503C
+struts.message.error.content.type.not.allowed = \u6587\u4EF6\u5185\u5BB9\u7C7B\u578B\u4E0D\u5408\u6CD5
+struts.message.error.file.extension.not.allowed = \u6587\u4EF6\u6269\u5C55\u540D\u4E0D\u5408\u6CD5
+```
+`此种消息定制并不完善。可以参考struts-2.3.20\src\core\src\main\resources\org\apache\struts2下的struts-messages.properties`
+```properties\
+struts.messages.error.uploading=Error uploading: {0}
+struts.messages.error.file.too.large=File {0} is too large to be uploaded. Maximum allowed size is {4} bytes!
+struts.messages.error.content.type.not.allowed=Content-Type not allowed: {0} "{1}" "{2}" {3}
+struts.messages.error.file.extension.not.allowed=File extension not allowed: {0} "{1}" "{2}" {3}
+
+```
+`配置后使用拦截器栈`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+
+		<interceptors>
+			<interceptor-stack name="QingJiu">
+				<interceptors-ref name="defaultStack">
+					<param name="fileUpload.maximumSize">2000</param>
+					<param name="fileUpload.allowedTypes">text/html,text/xml</param>
+					<param name="fileUpload.allowedExtensions">html,dtd,xml</param>
+				</interceptors-ref>
+			</interceptors-stacke>
+		</interceptors>
+
+		<default-interceptor -ref name="QingJiu"></default-interceptor -ref>
+
+       <action name="testUpload" class="UploadAction的全类名">
+	       <result>/success.jsp</result>
+       </action>
+    </package>
+</struts>
+```
+`对页面内容做出修改：`
+```XML
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testUpload" method="post" enctype="multipart/form-data" theme="simple">
+	    <s:filederror name="ppt"></s:filederror>
+	    <s:actionerror/>
+
+	    PPTFile:<s:file name="ppt" label="PPTFile"></s:file>
+	    PPTDesc:<s:textfield name="pptDesc[0]" label="PPTDesc"></s:textfield>
+		<br>
+
+		PPTFile:<s:file name="ppt" label="PPTFile"></s:file>
+	    PPTDesc:<s:textfield name="pptDesc[1]" label="PPTDesc"></s:textfield>
+		<br>
+
+	    PPTFile:<s:file name="ppt" label="PPTFile"></s:file>
+	    PPTDesc:<s:textfield name="pptDesc[2]" label="PPTDesc"></s:textfield>
+		<br>
+		<s:submit></s:submit>
+    </s:form>
+</body>
+</html>
+```
+
+## `文件下载概述`
+`在某些应用程序里，可能需要动态地把一个文件发送到用户的浏览中，而这个文件的名字和存放位置在编程时无法预知的。 `
+
+`Stream结果类型`
+- `Struts专门为文件下载提供了一种Stream结果类型。在使用一个Stream结果时，不必准备一个JSP页面`
+
+`文件下载：`
+- `Struts2 中使用type="stream" 的result进行下载即可`
+- `具体细节参看E:/Struts2/struts-2.3.20-all/struts-2.3.20/docs/docs/stream-result.html这个文档`
+- `可以为stream的result设置如下参数：`
+	- `contentType - 结果类型 (default = `text/plain`).`
+	- `contentLength - 下载文件的长度 (the browser displays a progress bar).
+	- `contentDisposition - 设定content-Disposition响应头。该响应头只当接应是一个文件下载类型，一般取值为：attachment；filename (default = `inline`, values are typically _attachment;filename="document.pdf"_).
+	- `inputName - 只当文件输入留的getter定义的那个属性的名字。默认值为inputStream (default = inputStream).
+	- `bufferSize - 缓存的大小。默认值为1024 (default = 1024).
+	- `allowCaching - 是否允许使用缓存 (default = true)
+	- `contentCharSet - 指定下载的字符集
+- `以上参数可以在Action中以getter方法的方式提供`
+
+`dowlnoad.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <a href="testDownload">Down Load</a>
+</body>
+</html>
+```
+
+`DownloadAction`
+```Java
+import java.io.InputStream;
+
+public class DownloadAction extends ActionSupport {
+
+    private static final long serialVersionUID = 1L;
+
+    private String contentType;
+    private long contentLength;
+    private String contentDisposition;
+    private InputStream inputStream; 
+
+    // Getter 和 Setter for contentType
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
+    // Getter 和 Setter for contentLength
+    public long getContentLength() {
+        return contentLength;
+    }
+
+    public void setContentLength(long contentLength) {
+        this.contentLength = contentLength;
+    }
+
+    // Getter 和 Setter for contentDisposition
+    public String getContentDisposition() {
+        return contentDisposition;
+    }
+
+    public void setContentDisposition(String contentDisposition) {
+        this.contentDisposition = contentDisposition;
+    }
+
+    // Getter 和 Setter for inputStream
+    public InputStream getInputStream() {
+        return inputStream;
+    }
+
+    public void setInputStream(InputStream inputStream) {
+        this.inputStream = inputStream;
+    }
+
+    @Override
+    public String execute() throws Exception {
+        //确定各个方法的值
+        contentType = "text/html";
+        contentDisposition="attachment;filename=hidden.html";
+
+		//确定文件目录，方便读取
+		ServletContext servletContext = ServletActionContext.getServletContext();
+		String fileName = servletContext.getRealPath("/files/hidden.html");
+		inputStream = new FileInputStream(fileName);
+		contentLength = inputStream.available();
+
+
+        return SUCCESS;
+    }
+}
+
+
+```
+
+
+`Struts.xml`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+
+		<interceptors>
+			<interceptor-stack name="QingJiu">
+				<interceptors-ref name="defaultStack">
+					<param name="fileUpload.maximumSize">2000</param>
+					<param name="fileUpload.allowedTypes">text/html,text/xml</param>
+					<param name="fileUpload.allowedExtensions">html,dtd,xml</param>
+				</interceptors-ref>
+			</interceptors-stacke>
+		</interceptors>
+
+		<default-interceptor -ref name="QingJiu"></default-interceptor -ref>
+
+       <action name="testUpload" class="UploadAction的全类名">
+	       <result>/success.jsp</result>
+       </action>
+
+		<action name="testDownload" class="DownloadAction的全类名">
+			<result type="stream">
+				<param name="bufferSize">2048</param>
+			</>
+		</action>
+    </package>
+</struts>
+```
