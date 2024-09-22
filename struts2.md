@@ -4327,3 +4327,369 @@ public class DownloadAction extends ActionSupport {
     </package>
 </struts>
 ```
+
+
+## `防止表单重复提交`
+
+- `表单的重复提交：`
+	- `若刷新表单页面，再提交表单不算重复提交。`
+	- `在不刷新表单页面的前提下：`
+		- `多次点击提交按钮`
+		- `已经提交成功，按"回退"之后，再点击"提交按钮"`
+		- `在控制器响应页面的形式为转发情况下，若已经提交成功，然后点击"刷新"`
+	- `重复提交的缺点：`
+		- `加重了服务器的负担`
+		- `可能导致错误操作`
+- `注意的是：若使用的是redirect的响应类型，已经提交成功后，再点击"刷新"，不是表单的重复提交`
+`新建页面token.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testToken">
+	    <s:testfield name="username" label="Username"></s:testfield>
+	     <s:submit></s:submit>
+    </s:form> 
+    
+</body>
+</html>
+```
+
+`新建一个TokenAction.java`
+```Java
+public class TokenAction extends ActionSupport {
+
+    private static final long serialVersionUID = 1L;
+
+    private String username;
+
+    // Getter for username
+    public String getUsername() {
+        return username;
+    }
+
+    // Setter for username
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    @Override
+    public String execute() throws Exception {
+
+		Thread.slepp(2000);
+
+		System.out.println(username);
+        return SUCCESS;
+    }
+}
+
+```
+
+`在struts.xml配置文件中添加配置`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+
+		<interceptors>
+			<interceptor-stack name="QingJiu">
+				<interceptors-ref name="defaultStack">
+					<param name="fileUpload.maximumSize">2000</param>
+					<param name="fileUpload.allowedTypes">text/html,text/xml</param>
+					<param name="fileUpload.allowedExtensions">html,dtd,xml</param>
+				</interceptors-ref>
+			</interceptors-stacke>
+		</interceptors>
+
+		<default-interceptor -ref name="QingJiu"></default-interceptor -ref>
+
+       <action name="testUpload" class="UploadAction的全类名">
+	       <result>/success.jsp</result>
+       </action>
+
+		<action name="testDownload" class="DownloadAction的全类名">
+			<result type="stream">
+				<param name="bufferSize">2048</param>
+			</result>
+		</action>
+
+		<action name="testToken" class="TokenAction的全类名">
+			<result>/success.jsp</result>
+		</action>
+    </package>
+</struts>
+```
+
+`如何解决重复提交问题？`
+- `在token.jsp里添加token标签`
+	- `生成一个隐藏域`
+	- `在session添加一个属性值`
+	- `隐藏域的值和session的属性值是一致的`
+```xml
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <s:form action="testToken">
+	    <s:token></s:token>
+	    <s:testfield name="username" label="Username"></s:testfield>
+	    <s:submit></s:submit>
+    </s:form>
+    
+</body>
+</html>
+```
+
+- `使用Token 或 TokenSession 拦截器`
+	- `这两个拦截器均不在默认的拦截器栈中，所以需要手工配置一下`
+	- `若使用Token拦截器，则需要配置一个token.valid的result`
+	- `若使用TokenSession拦截器，则不需要配置任何其他的result`
+
+- `Token VS TokenSession`
+	- `都是解决表单重复提交问题的`
+	- `使用token拦截器回转到token.valid这个result`
+	- `使用tokenSession拦截器则还会响应那个目标页面，但不会执行tokenSession的后续拦截器。就像什么都没发生过一样`
+
+`在struts.xml配置文件中，添加配置信息`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+
+		<interceptors>
+			<interceptor-stack name="QingJiu">
+				<interceptors-ref name="defaultStack">
+					<param name="fileUpload.maximumSize">2000</param>
+					<param name="fileUpload.allowedTypes">text/html,text/xml</param>
+					<param name="fileUpload.allowedExtensions">html,dtd,xml</param>
+				</interceptors-ref>
+			</interceptors-stacke>
+		</interceptors>
+
+		<default-interceptor -ref name="QingJiu"></default-interceptor -ref>
+
+       <action name="testUpload" class="UploadAction的全类名">
+	       <result>/success.jsp</result>
+       </action>
+
+		<action name="testDownload" class="DownloadAction的全类名">
+			<result type="stream">
+				<param name="bufferSize">2048</param>
+			</result>
+		</action>
+
+		<action name="testToken" class="TokenAction的全类名">
+			<interceptor-ref name="token"></interceptor-ref>
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+			<result>/success.jsp</result>
+			<result name="invalid.token">token-error.jsp</result>
+		</action>
+    </package>
+</struts>
+```
+
+`创建token-error.jsp`
+```JSP
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags" %>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" contentType="text/html; charset=UTF-8" charset="UTF-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <!-- 页面内容 -->
+    <h4> Token Error Page </h4>
+    <s:actionerror/>
+</body>
+</html>
+```
+
+`对错误消息进行修改，通过修改国际化配置资源文件:`
+- `示例位置在：struts-2.3.20\src\core\src\main\resources\org\apache\struts2 下的struts-messages.properties 文件中。`
+- `struts.messages.invalid.token=The form has already been processed or no token was supplied, please try again.`
+
+
+
+## `自定义拦截器`
+![[Pasted image 20240915100741.png]]
+
+`Struts2拦截器`
+- `拦截器是Struts2(Interceptor)的核心组成部分。`
+- `Struts2很多功能都是构建在拦截器基础上的。如文件的上传和下载、国际化、数据类型转换等等`
+- `Struts2拦截器在访问某个Action方法之前或之后实施拦截`
+- `Struts2拦截器是可插拔的，拦截器是AOP(面向切面编程)的一种实现`
+- `拦截器栈(Interceptor Stack)：将拦截器按一定顺序联结成一条链。在访问被拦截的方法是，Struts2拦截器链中的拦截器就会按其之前定义顺序被依次调用。`
+
+`Interceptor接口`
+- `每个拦截器都是实现了Interceptor接口的Java类`
+	- `init：该方法将在拦截器被创建后立即被调用，它在拦截器的生命周期内只被调用一次。可以在该方法中对相关资源进行必要的初始化。`
+	- `interecept：每拦截一个请求，该方法就会被调用一次`
+	- `destroy：该方法将在拦截器被销毁之前被调用，他在拦截器的生命周期内也只被调用一次。`
+- `Struts会依次调用为某个Action而注册的每一个拦截器的interecept方法`
+- `每次调用interecept方法时,Struts会传递一个ActionInvocation接口的实例。`
+- `ActionInvocation：代表一个给定Action的执行状态，拦截器可以从该类的对象里获得与该Action相关的Action对象和Result对象。在完成拦截器自己的任务之后，拦截器将调用ActionInvocation对象的invoke方法前进到Action处理提供了一个空白的实现。`
+- `AbstractInterceptor类实现了Interceptor接口。并为init,destroy提供了一个空白的实现。`
+```Java
+package com.opensymphony.xwork2.interceptor;
+
+import com.opensymphony.xwork2.ActionInvocation;
+
+/**
+ * Provides default implementations of optional lifecycle methods
+ */
+public abstract class AbstractInterceptor implements Interceptor {
+
+    /**
+     * Does nothing
+     */
+    public void init() {
+    }
+    
+    /**
+     * Does nothing
+     */
+    public void destroy() {
+    }
+
+
+    /**
+     * Override to handle interception
+     */
+    public abstract String intercept(ActionInvocation invocation) throws Exception;
+}
+
+```
+
+- `自定义拦截器`
+	- `具体步骤`
+		- `定义一个拦截器类`
+			- `可以实现Interceptor接口`
+			- `继承AbstractInterceptor抽象方法`
+		- `在struts.xml文件配置`
+		- `注意：在自定义的拦截器中可以选择不调用ActionInvocation的invoke()方法。那么后续的拦截器和Action方法将不会被调用Struts会渲染自定义拦截器intercept方法返回值对应的result。`
+```Java
+import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
+import com.opensymphony.xwork2.ActionInvocation;
+
+public class MyInterceptor extends AbstractInterceptor {
+
+    @Override
+    public String intercept(ActionInvocation invocation) throws Exception {
+
+		private static final long serialVersionUID = 1L;
+
+		System.out.println("before invocation.invoke");
+
+		String result = invocation.invoke();
+
+		System.out.println("after invocation.invoke");
+
+        return result;
+    }
+}
+
+```
+- `在struts.xml配置文件中添加拦截器`
+```XML
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+    "http://struts.apache.org/dtds/struts-2.5.dtd">
+
+<struts>
+	<!--配置国际化资源管理-->
+	<constant name="struts.custom.i18n.resources" value="i18n"></constant>
+    <!-- 包配置 -->
+    <package name="default" namespace="/" extends="struts-default">
+
+
+		<interceptors>
+			<interceptor name="hello" class="MyInterceptor的全类名">
+			</interceptor>
+		</interceptors>
+
+		<action name="testToken" class="TokenAction的全类名">
+			<interceptor-ref name="hello"></interceptor-ref>
+			<interceptor-ref name="token"></interceptor-ref>
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+			<result>/success.jsp</result>
+			<result name="invalid.token">token-error.jsp</result>
+		</action>
+    </package>
+</struts>
+```
+
+`实例：`
+`登录验证拦截器：`
+```Java
+import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
+import com.opensymphony.xwork2.ActionInvocation;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.ActionSupport;
+import java.util.Map;
+
+public class LoginInterceptor extends AbstractInterceptor {
+
+    @Override
+    public String intercept(ActionInvocation invocation) throws Exception {
+        // 获取 ActionContext
+        ActionContext context = invocation.getInvocationContext();
+        // 获取 session
+        Map<String, Object> session = context.getSession();
+        
+        // 检查用户是否登录（假设用户登录后在 session 中存储 "user" 对象）
+        Object user = session.get("user");
+        
+        if (user == null) {
+            // 用户未登录，跳转到登录页面
+            return ActionSupport.LOGIN;
+        }
+        
+        // 用户已登录，继续执行后续的拦截器或目标 Action
+        return invocation.invoke();
+    }
+}
+```
+`struts.xml配置文件：`
+```XML
+<interceptors>
+    <interceptor name="loginInterceptor" class="com.example.interceptor.LoginInterceptor" />
+    <interceptor-stack name="defaultStack">
+        <interceptor-ref name="loginInterceptor"/>
+        <interceptor-ref name="defaultStack"/>
+    </interceptor-stack>
+</interceptors>
+
+<action name="secureAction" class="com.example.action.SecureAction">
+    <interceptor-ref name="defaultStack"/>
+    <result name="success">/securePage.jsp</result>
+    <result name="login">/login.jsp</result>
+</action>
+
+```
+- `session检查：拦截器通过ActionContext 获取session并检查是否存在user对象`
+- `未登录跳转：如果用户未登录，拦截器返回ActionSupprt.LOGIN，这会让Struts2跳转到登录页面`
+- `已登录继续执行：如果用户已经登录，调用invocation.invoke()继续执行后续的拦截器或目标Action`
